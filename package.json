@@ -1,0 +1,44 @@
+{
+  "name": "back-end",
+  "version": "1.0.0",
+  "description": "backend api endpoints for swapup.trade",
+  "main": "server.js",
+  "scripts": {
+    "start": "babel-node ./src/server.js",
+    "build": "npm ci&& babel ./src --out-dir ./dist --source-maps",
+    "start:prod": "npm run build && node ./dist/server.js",
+    "dev": "set NODE_ENV=development&& nodemon --exec babel-node ./src/server.js",
+    "test": "set NODE_ENV=test&& nodemon --exec babel-node ./src/server.js",
+    "prod": "set NODE_ENV=production&& nodemon --exec babel-node ./src/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Swapup-trade/Back-End.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Swapup-trade/Back-End/issues"
+  },
+  "homepage": "https://github.com/Swapup-trade/Back-End#readme",
+  "dependencies": {
+    "@babel/cli": "^7.20.7",
+    "@babel/core": "^7.20.7",
+    "@babel/node": "^7.20.7",
+    "@babel/preset-env": "^7.20.2",
+    "@babel/register": "^7.18.9",
+    "alchemy-sdk": "^2.2.4",
+    "body-parser": "^1.20.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "express-rate-limit": "^6.7.0",
+    "sequelize": "^6.28.0",
+    "tedious": "^15.1.2"
+  },
+  "devDependencies": {
+    "chai": "^4.3.7",
+    "chai-http": "^4.3.0",
+    "mocha": "^10.2.0"
+  }
+}

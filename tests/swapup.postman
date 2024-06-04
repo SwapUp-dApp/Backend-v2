@@ -1,0 +1,162 @@
+{
+    "info": {
+        "_postman_id": "55c22a80-88ad-4c8f-b064-53b3c18575b9",
+        "name": "SwapUp",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Get All Wallets",
+            "protocolProfileBehavior": {
+                "disableBodyPruning": true
+            },
+            "request": {
+                "method": "GET",
+                "header": [],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\r\n    \"walletAddress\" : \"wallet126\"\r\n}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "http://localhost/api/wallets/",
+                    "protocol": "http",
+                    "host": ["localhost"],
+                    "path": ["api", "wallets", ""]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Create Wallet",
+            "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\r\n    \"walletAddress\" : \"wallet126\"\r\n}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "http://localhost/api/wallets/",
+                    "protocol": "http",
+                    "host": ["localhost"],
+                    "path": ["api", "wallets", ""]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "New Swap",
+            "protocolProfileBehavior": {
+                "disableBodyPruning": true
+            },
+            "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\r\n    \"meta\" : \"{\n    \"init\": {\n       \"tokens\": [\n           {\n               \"id\": 0,\n               \"type\": \"NFT\",\n               \"meta_uri\": \"https://ipfs.io/ipfs/Qme7ss3ARVgxv6rXqVPiikMJ8u2NLgmgszg13pYrDKEoiu\",\n               \"address\": \"0xcB8d1260F9c92A3A545d409466280fFdD7AF7042\"\n           }, {\n               \"id\": 1,\n               \"type\": \"NFT\",\n               \"meta_uri\": \"https://ipfs.io/ipfs/Qme7ss3ARVgxv6rXqVPiikMJ8u2NLgmgszg13pGEIDBAi\",\n               \"address\": \"0xcGHU1260F9c92A3A545d409466280fFdD7AGHU2\"\n           }\n        ]\n    },\n    \"accept\": {\n       \"tokens\": [\n           {\n               \"id\": 5,\n               \"type\": \"NFT\",\n               \"meta_uri\": \"https://ipfs.io/ipfs/Qme7ss3ARVgxv6rXqVPiikMJ8u2NLgmgszg13pYrDKEoiu\",\n               \"address\": \"0xcGHUT760F9c92A3A545d409466280fFdD7Agyui8\"\n           }, {\n               \"id\": 6,\n               \"type\": \"NFT\",\n               \"meta_uri\": \"https://ipfs.io/ipfs/Qme7ss3ARVgxv6rXqVPiikMJ8u2NLgmgszg13pGEIDBAi\",\n               \"address\": \"0xHUI76260F9c92A3A545d409466280fFdD7AGHU2\"\n           }\n        ]\n    }\n}\",\r\n  \"a_address\" : \"0x00A7e65D40f030efeB90FBceDF385fbba24a70dE\",\r\n \"i_address\" : \"0x79f553dcE43134F45ce87977f1a09Ad9B9A4D3Ea\"\r\n }",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "http://localhost/api/swaps/",
+                    "protocol": "http",
+                    "host": ["localhost"],
+                    "path": ["api", "swaps", ""]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Update Swap",
+            "protocolProfileBehavior": {
+                "disableBodyPruning": true
+            },
+            "request": {
+                "method": "PATCH",
+                "header": [],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"init\": {\n       \"tokens\": [\n           {\n               \"id\": 0,\n               \"type\": \"NFT\",\n               \"meta_uri\": \"https://ipfs.io/ipfs/Qme7ss3ARVgxv6rXqVPiikMJ8u2NLgmgszg13pYrDKEoiu\",\n               \"address\": \"0xcB8d1260F9c92A3A545d409466280fFdD7AF7042\"\n           }, {\n               \"id\": 1,\n               \"type\": \"NFT\",\n               \"meta_uri\": \"https://ipfs.io/ipfs/Qme7ss3ARVgxv6rXqVPiikMJ8u2NLgmgszg13pGEIDBAi\",\n               \"address\": \"0xcGHU1260F9c92A3A545d409466280fFdD7AGHU2\"\n           }\n        ]\n    },\n    \"accept\": {\n       \"tokens\": [\n           {\n               \"id\": 5,\n               \"type\": \"NFT\",\n               \"meta_uri\": \"https://ipfs.io/ipfs/Qme7ss3ARVgxv6rXqVPiikMJ8u2NLgmgszg13pYrDKEoiu\",\n               \"address\": \"0xcGHUT760F9c92A3A545d409466280fFdD7Agyui8\"\n           }, {\n               \"id\": 6,\n               \"type\": \"NFT\",\n               \"meta_uri\": \"https://ipfs.io/ipfs/Qme7ss3ARVgxv6rXqVPiikMJ8u2NLgmgszg13pGEIDBAi\",\n               \"address\": \"0xHUI76260F9c92A3A545d409466280fFdD7AGHU2\"\n           }\n        ]\n    }\n}\",\r\n  \"status\" : 2\r\n}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "http://localhost/api/swaps/",
+                    "protocol": "http",
+                    "host": ["localhost"],
+                    "path": ["api", "swaps", ""]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Get Pending Swaps",
+            "protocolProfileBehavior": {
+                "disableBodyPruning": true
+            },
+            "request": {
+                "method": "GET",
+                "header": [],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\r\n    \"address\" : \"0x00A7e65D40f030efeB90FBceDF385fbba24a70dE\"\r\n}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "http://localhost/api/swaps/pending",
+                    "protocol": "http",
+                    "host": ["localhost"],
+                    "path": ["api", "swaps", "pending", ""]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Get Swaps History",
+            "protocolProfileBehavior": {
+                "disableBodyPruning": true
+            },
+            "request": {
+                "method": "GET",
+                "header": [],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\r\n    \"address\" : \"0x79f553dcE43134F45ce87977f1a09Ad9B9A4D3Ea\"\r\n}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "http://localhost/api/swaps/history",
+                    "protocol": "http",
+                    "host": ["localhost"],
+                    "path": ["api", "swaps", "history", ""]
+                }
+            },
+            "response": []
+        }
+    ]
+}
