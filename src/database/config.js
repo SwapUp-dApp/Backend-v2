@@ -7,7 +7,7 @@ const configuration = {
     "database": process.env.DB_NAME,
     "host": process.env.DB_HOST,
     "dialect": "mssql",
-    "port": process.env.DB_PORT || 1434,
+    "port": process.env.DB_PORT || 1433,
     "migrationStorage": "json", // Use a different storage type. Default: sequelize
     "migrationStoragePath": "sequelizeMeta.json", // Use a different file name. Default: sequelize-meta.json
     "seederStorage": "json", // Use a different storage. Default: none
@@ -19,7 +19,7 @@ const configuration = {
     "database": process.env.DB_NAME,
     "host": process.env.DB_HOST,
     "dialect": "mssql",
-    "port": process.env.DB_PORT || 1434,
+    "port": process.env.DB_PORT || 1433,
     "migrationStorage": "json", // Use a different storage type. Default: sequelize
     "migrationStoragePath": "sequelizeMeta.json", // Use a different file name. Default: sequelize-meta.json
     "seederStorage": "json", // Use a different storage. Default: none
@@ -31,7 +31,7 @@ const configuration = {
     "database": process.env.DB_NAME,
     "host": process.env.DB_HOST,
     "dialect": "mssql",
-    "port": process.env.DB_PORT || 1434,
+    "port": process.env.DB_PORT || 1433,
     "migrationStorage": "json", // Use a different storage type. Default: sequelize
     "migrationStoragePath": "sequelizeMeta.json", // Use a different file name. Default: sequelize-meta.json
     "seederStorage": "json", // Use a different storage. Default: none

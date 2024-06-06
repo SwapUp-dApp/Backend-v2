@@ -1,2 +1,4 @@
 node_modules
 */node_modules
+.env
+node_modules/.cache/@babel/register/.babel.7.20.7.development.json

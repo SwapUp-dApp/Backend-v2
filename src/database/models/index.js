@@ -41,13 +41,14 @@ db.users = require("./user.js")(sequelize, Sequelize);
 db.swaps = require("./swap.js")(sequelize, Sequelize);
 
 // Synchronize all models with the database, creating tables if they don't exist
-sequelize.sync()
-    .then(() => {
-        console.log('All models were synchronized successfully.');
-    })
-    .catch(err => {
-        console.error('An error occurred while synchronizing models:', err);
-    });
+// **** ONLY TO BE USED WITHIN DEV EVNIRONMENT FOR FIRST TIME SETUP **** //
+// sequelize.sync()
+//     .then(() => {
+//         console.log('All models were synchronized successfully.');
+//     })
+//     .catch(err => {
+//         console.error('An error occurred while synchronizing models:', err);
+//     });
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
