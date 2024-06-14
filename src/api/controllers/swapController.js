@@ -12,10 +12,11 @@ const newSwap = async (req, res) => {
 
         const response = await db.swaps.create({
             metadata: JSON.stringify(metadata),
-            status: 1,
             init_address: req.body.init_address.trim(),
             accept_address: req.body.accept_address.trim(),
-            init_sign: req.body.init_sign.trim()
+            init_sign: req.body.init_sign.trim(),
+            
+            status: 1,
         })
         if (response) {
             res.json({
