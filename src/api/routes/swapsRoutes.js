@@ -11,3 +11,13 @@ swapRouter
     .get("/pending", swapController.getPending)
     .post("/signature",swapController.sendSign)
     .get("/", swapController.getSwapDetails)
+
+    // open swaps 
+    .post("/openswap/" , swapController.newSwap)
+    .put("/openswap/" , swapController.newSwap)
+    .delete("/openswap/" , swapController.newSwap)
+
+    .get("/openswap/getOpenSwapList" , swapController.newSwap)
+    .get("/openswap/proposeOpenSwap" , swapController.newSwap)
+    .get("/openswap/closeOpenSwapoffers" , swapController.newSwap)
+    .get("/openswap/acceptOpenSwap" , swapController.newSwap)
