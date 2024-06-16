@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", {
 exports.swapController = void 0;
 var _models = _interopRequireDefault(require("../../database/models"));
 var _sequelize = require("sequelize");
+var _constants = require("../utils/constants.js");
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 function test(req, res) {
   //testDb();
@@ -18,10 +19,16 @@ const newSwap = async (req, res) => {
     var metadata = req.body.metadata;
     const response = await _models.default.swaps.create({
       metadata: JSON.stringify(metadata),
-      status: 1,
       init_address: req.body.init_address.trim(),
       accept_address: req.body.accept_address.trim(),
-      init_sign: req.body.init_sign.trim()
+      init_sign: req.body.init_sign.trim(),
+      swap_mode: req.body.swap_mode,
+      open_trade_id: null,
+      trading_chain: req.body.trading_chain,
+      status: _constants.SwapStatus.PENDING,
+      offer_type: _constants.OfferType.PRIMARY,
+      trade_id: req.body.trade_id,
+      swap_preferences: null
     });
     if (response) {
       res.json({
@@ -43,11 +50,17 @@ const updateSwap = async (req, res) => {
     var metadata = req.body.metadata;
     const response = await _models.default.swaps.update({
       metadata: JSON.stringify(metadata),
-      status: 1,
-      //1 is pending
+      // status: 1, //1 is pending
       init_address: req.body.init_address.trim(),
       accept_address: req.body.accept_address.trim(),
-      init_sign: req.body.init_sign.trim()
+      init_sign: req.body.init_sign.trim(),
+      swap_mode: req.body.swap_mode,
+      open_trade_id: null,
+      trading_chain: req.body.trading_chain,
+      status: _constants.SwapStatus.PENDING,
+      offer_type: _constants.OfferType.PRIMARY,
+      trade_id: req.body.trade_id,
+      swap_preferences: null
     }, {
       where: {
         id: req.body.id
@@ -75,7 +88,14 @@ const updateSwapStatus = async (req, res) => {
       tx: "" + req.body.txn,
       notes: "" + req.body.notes,
       metadata: req.body.metadata,
-      timestamp: req.body.timestamp
+      timestamp: req.body.timestamp,
+      swap_mode: req.body.swap_mode,
+      open_trade_id: null,
+      trading_chain: req.body.trading_chain,
+      status: _constants.SwapStatus.PENDING,
+      offer_type: _constants.OfferType.PRIMARY,
+      trade_id: req.body.trade_id,
+      swap_preferences: null
     }, {
       where: {
         id: req.body.id

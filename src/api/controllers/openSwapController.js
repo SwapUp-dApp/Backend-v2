@@ -44,7 +44,7 @@ const getOpenSwapList = async (req, res) => {
     try {
         const response = await db.swaps.findAll({
             where: {
-                status: SwapStatus.PENDING
+                status: SwapStatus.PENDING 
             }
         });
 
@@ -98,7 +98,7 @@ const proposeOpenSwap = async (req, res) => {
             accept_address: accept_address.trim(), // init_address will be reterieved from db , against open_trade_id
             trade_id: trade_id,
 
-            offer_type: OfferType.COUNTER,
+            offer_type: OfferType.PRIMARY,
             
         });
         if (response) {

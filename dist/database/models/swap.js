@@ -25,9 +25,12 @@ module.exports = (sequelize, DataTypes) => {
     notes: DataTypes.STRING,
     trade_id: DataTypes.STRING,
     trading_chain: DataTypes.STRING,
-    swap_mode:DataTypes.INTEGER,
+    swap_mode: DataTypes.INTEGER,
+    //*
     offer_type: DataTypes.INTEGER,
-    timestamp: DataTypes.STRING
+    timestamp: DataTypes.STRING,
+    swap_preferences: DataTypes.TEXT,
+    open_trade_id: DataTypes.TEXT
   }, {
     sequelize,
     modelName: "Swap"

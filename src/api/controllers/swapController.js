@@ -1,5 +1,6 @@
-import db from "../../database/models"
-import { Op } from "sequelize"
+import db from "../../database/models";
+import { Op } from "sequelize";
+import { OfferType, SwapStatus } from '../utils/constants.js';
 
 function test(req, res) {
     //testDb();
@@ -16,7 +17,15 @@ const newSwap = async (req, res) => {
             accept_address: req.body.accept_address.trim(),
             init_sign: req.body.init_sign.trim(),
             
-            status: 1,
+            swap_mode: req.body.swap_mode,
+            open_trade_id: null,
+            trading_chain: req.body.trading_chain,                   
+            status: SwapStatus.PENDING,
+            offer_type: req.body.offer_type,
+            trade_id : req.body.trade_id,
+            swap_preferences: null
+
+            
         })
         if (response) {
             res.json({
@@ -41,10 +50,19 @@ const updateSwap = async (req, res) => {
         const response = await db.swaps.update(
             {
                 metadata: JSON.stringify(metadata),
-                status: 1, //1 is pending
+               // status: 1, //1 is pending
                 init_address: req.body.init_address.trim(),
                 accept_address: req.body.accept_address.trim(),
-                init_sign: req.body.init_sign.trim()
+                init_sign: req.body.init_sign.trim(),
+
+                swap_mode: req.body.swap_mode,
+                open_trade_id: null,
+                trading_chain: req.body.trading_chain,                   
+                status: SwapStatus.PENDING,
+                offer_type: req.body.offer_type,
+                trade_id : req.body.trade_id,
+                swap_preferences: null,
+
             },
             { where: { id: req.body.id } }
         )
@@ -73,7 +91,15 @@ const updateSwapStatus = async (req, res) => {
                 tx: "" + req.body.txn,
                 notes: "" + req.body.notes,
                 metadata: req.body.metadata,
-                timestamp: req.body.timestamp
+                timestamp: req.body.timestamp,
+
+                swap_mode: req.body.swap_mode,
+                open_trade_id: null,
+                trading_chain: req.body.trading_chain,                   
+                status: SwapStatus.PENDING,
+                offer_type: req.body.offer_type,
+                trade_id : req.body.trade_id,
+                swap_preferences: null
             },
             { where: { id: req.body.id } }
         )
