@@ -84,34 +84,32 @@ const getOpenSwapList = async (req, res) => {
 
 const getSwapPreferences = async (req, res) => {
     try {
-        const response = await db.swaps.findAll({
+        const response = await db.swaps.findOne({
             where: {
                 [Op.and]: [
                     { swap_mode: SwapMode.OPEN },
                     { open_trade_id: req.query.open_trade_id },
+                    { trade_id: null }
                 ]
             }
         });
 
         // Convert metadata and swap_preferences to JSON if they are valid JSON strings
-        const formattedResponse = response.map(swap => {
+        const formattedResponse = () => {
             const swapJSON = swap.toJSON();
             const formattedSwap = {
-                 
-                
                 swap_preferences: tryParseJSON(swapJSON.swap_preferences),
-                
             };
             // Remove original createdAt and updatedAt fields
-             
+
             return formattedSwap;
-        });
-        
+        };
+
         if (response) {
             res.json({
                 success: true,
                 message: "get_open_swap_preference_against_id",
-                data: formattedResponse
+                data: formattedResponse()
             });
         }
     } catch (err) {
@@ -121,7 +119,7 @@ const getSwapPreferences = async (req, res) => {
 
 const getSwapObject = async (req, res) => {
     try {
-        const response = await db.swaps.findAll({
+        const response = await db.swaps.findOne({
             where: {
                 [Op.and]: [
                     { swap_mode: SwapMode.OPEN },
@@ -132,8 +130,8 @@ const getSwapObject = async (req, res) => {
         });
 
         // Convert metadata and swap_preferences to JSON if they are valid JSON strings
-        const formattedResponse = response.map(swap => {
-            const swapJSON = swap.toJSON();
+        const formattedResponse = () => {
+            const swapJSON = response.toJSON();
             const formattedSwap = {
                 ...swapJSON,
                 metadata: tryParseJSON(swapJSON.metadata),
@@ -145,13 +143,13 @@ const getSwapObject = async (req, res) => {
             delete formattedSwap.createdAt;
             delete formattedSwap.updatedAt;
             return formattedSwap;
-        });
-        
+        };
+
         if (response) {
             res.json({
                 success: true,
                 message: "get_open_swap_object_against_id",
-                data: formattedResponse
+                data: formattedResponse()
             });
         }
     } catch (err) {
