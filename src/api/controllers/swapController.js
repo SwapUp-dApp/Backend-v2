@@ -1,6 +1,6 @@
 import db from "../../database/models";
 import { Op } from "sequelize";
-import { OfferType, SwapStatus } from '../utils/constants.js';
+import { OfferType, SwapStatus, SwapMode } from '../utils/constants.js';
 
 function test(req, res) {
     //testDb();
@@ -158,6 +158,63 @@ const getSwapDetails = async (req, res) => {
     }
 }
 
+const getPrivatePending = async (req, res) => {
+    try {
+        const response = await db.swaps.findAll({
+            where: {
+                [Op.and]: {
+                    status: 1,
+                    swap_mode: SwapMode.PRIVATE,
+                    [Op.or]: [
+                        { accept_address: req.query.address },
+                        { init_address: req.query.address },
+                    ]
+                }
+            }
+        });
+
+         // Convert metadata and swap_preferences to JSON if they are valid JSON strings
+         const formattedResponse = response.map(swap => {
+            const swapJSON = swap.toJSON();
+            const formattedSwap = {
+                ...swapJSON,
+                metadata: tryParseJSON(swapJSON.metadata),
+                created_at: swapJSON.createdAt,
+                updated_at: swapJSON.updatedAt,
+            };
+            // Remove original createdAt and updatedAt fields
+            delete formattedSwap.createdAt;
+            delete formattedSwap.updatedAt;
+            return formattedSwap;
+        });
+        if (response) {
+            res.json({
+                success: true,
+                message: "get_private_pending_swaps",
+                data: formattedResponse
+            });
+        }
+    } catch (err) {
+        console.log(err)
+        res.status(500).json({
+            success: false,
+            message: `***get_pending error -> ${err}`
+        })
+    }
+}
+
+//helper function to parse JSON
+// Helper function to parse JSON safely
+function tryParseJSON(jsonString) {
+    try {
+        const parsed = JSON.parse(jsonString);
+        return parsed;
+    } catch (err) {
+        return jsonString; // Return original string if parsing fails
+    }
+}
+
+
 const getPending = async (req, res) => {
     try {
         const response = await db.swaps.findAll({
@@ -244,5 +301,6 @@ export const swapController = {
     getPending,
     history,
     sendSign,
-    getSwapDetails
+    getSwapDetails,
+    getPrivatePending
 }

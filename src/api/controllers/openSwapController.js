@@ -119,6 +119,48 @@ const getSwapPreferences = async (req, res) => {
     }
 };
 
+const getSwapObject = async (req, res) => {
+    try {
+        const response = await db.swaps.findAll({
+            where: {
+                [Op.and]: [
+                    { swap_mode: SwapMode.OPEN },
+                    { open_trade_id: req.query.open_trade_id },
+                    { trade_id: null },
+                ]
+            }
+        });
+
+        // Convert metadata and swap_preferences to JSON if they are valid JSON strings
+        const formattedResponse = response.map(swap => {
+            const swapJSON = swap.toJSON();
+            const formattedSwap = {
+                ...swapJSON,
+                metadata: tryParseJSON(swapJSON.metadata),
+                swap_preferences: tryParseJSON(swapJSON.swap_preferences),
+                created_at: swapJSON.createdAt,
+                updated_at: swapJSON.updatedAt,
+            };
+            // Remove original createdAt and updatedAt fields
+            delete formattedSwap.createdAt;
+            delete formattedSwap.updatedAt;
+            return formattedSwap;
+        });
+        
+        if (response) {
+            res.json({
+                success: true,
+                message: "get_open_swap_object_against_id",
+                data: formattedResponse
+            });
+        }
+    } catch (err) {
+        handleError(res, err, "get_open_swap_object_against_id error");
+    }
+};
+
+
+
 
 // Helper function to parse JSON safely
 function tryParseJSON(jsonString) {
@@ -240,5 +282,6 @@ export const openSwapController = {
     proposeOpenSwap,
     closeOpenSwapOffers,
     acceptOpenSwap,
-    getSwapPreferences
+    getSwapPreferences,
+    getSwapObject
 };
