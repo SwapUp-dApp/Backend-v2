@@ -7,7 +7,7 @@ export function getAlchemy() {
         network:
             process.env.NETWORK === "1"
                 ? Network.ETH_MAINNET
-                : Network.ETH_SEPOLIA // Replace with your network.
+                : Network.BASE_SEPOLIA // Replace with your network.
     };
 
     return new Alchemy(settings);
