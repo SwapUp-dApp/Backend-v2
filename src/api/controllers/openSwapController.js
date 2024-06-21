@@ -173,9 +173,9 @@ function tryParseJSON(jsonString) {
 
 const proposeOpenSwap = async (req, res) => {
     try {
-        const { trade_id, metadata, init_address, init_sign, open_trade_id } = req.body;  //trade_id //metadata is accept_meta // open_trade_id
+        const { trade_id, metadata, init_address, init_sign, open_trade_id, id, accept_address, trading_chain } = req.body;  //trade_id //metadata is accept_meta // open_trade_id
 
-        const swap = await db.swaps.findByPk(swapId);
+        const swap = await db.swaps.findByPk(id);
         if (!swap || swap.status !== SwapStatus.PENDING) {
             return res.status(400).json({
                 success: false,
@@ -189,10 +189,11 @@ const proposeOpenSwap = async (req, res) => {
             init_address: init_address.trim(),
             init_sign: init_sign.trim(),
             accept_address: accept_address.trim(), // init_address will be reterieved from db , against open_trade_id
-            trade_id: trade_id,
-
+            trade_id: trade_id.trim(),
+            open_trade_id: open_trade_id.trim(),
+            trading_chain: trading_chain.trim(),
             offer_type: OfferType.PRIMARY,
-
+            swap_mode: SwapMode.OPEN
         });
         if (response) {
             res.json({
@@ -203,7 +204,7 @@ const proposeOpenSwap = async (req, res) => {
         }
     } catch (err) {
         handleError(res, err, "propose_open_swap error");
-    }
+    }
 };
 
 const closeOpenSwapOffers = async (req, res) => {
