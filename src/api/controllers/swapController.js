@@ -295,6 +295,52 @@ const sendSign = async (req, res) => {
     }
 };
 
+const getPendingSwaps = async (req, res) => {
+    try {
+        const response = await db.swaps.findAll({
+            where: {
+                [Op.and]: {
+                    open_trade_id: null,
+                    status: 1,
+                    [Op.or]: [
+                        { accept_address: req.query.address },
+                        { init_address: req.query.address },
+                    ]
+                }
+            }
+        });
+
+         // Convert metadata and swap_preferences to JSON if they are valid JSON strings
+         const formattedResponse = response.map(swap => {
+            const swapJSON = swap.toJSON();
+            const formattedSwap = {
+                ...swapJSON,
+                metadata: tryParseJSON(swapJSON.metadata),
+                swap_preferences: tryParseJSON(swapJSON.swap_preferences),
+                created_at: swapJSON.createdAt,
+                updated_at: swapJSON.updatedAt,
+            };
+            // Remove original createdAt and updatedAt fields
+            delete formattedSwap.createdAt;
+            delete formattedSwap.updatedAt;
+            return formattedSwap;
+        });
+        if (response) {
+            res.json({
+                success: true,
+                message: "get__pending_swaps",
+                data: formattedResponse
+            });
+        }
+    } catch (err) {
+        console.log(err)
+        res.status(500).json({
+            success: false,
+            message: `***get_pending error -> ${err}`
+        })
+    }
+};
+
 export const swapController = {
     test,
     newSwap,
@@ -304,5 +350,6 @@ export const swapController = {
     history,
     sendSign,
     getSwapDetails,
-    getPrivatePending
+    getPrivatePending,
+    getPendingSwaps
 };

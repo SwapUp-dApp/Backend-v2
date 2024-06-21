@@ -5,7 +5,8 @@ function test(req, res) {
     //testDb();
     res.send({ network: process.env.NETWORK })
     let alchemy = getAlchemy()
-    alchemy.core.resolveName("xyz.3dot0.eth").then(console.log);
+    //alchemy.core.resolveName("xyz.3dot0.eth").then(console.log);
+    console.log(alchemy);
 }
 
 // returns all the nfts owned by a wallet address
