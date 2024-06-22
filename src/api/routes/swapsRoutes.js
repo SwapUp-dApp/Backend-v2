@@ -11,6 +11,7 @@ swapRouter
     .get("/pending", swapController.getPending)
     .get("/pendingswaps", swapController.getPendingSwaps)
     .get("/private-swaplist", swapController.getPrivatePending)
+    .get("/get-swap-details", swapController.getSwapDetails)
     .post("/signature",swapController.sendSign)
     .get("/", swapController.getSwapDetails)
 

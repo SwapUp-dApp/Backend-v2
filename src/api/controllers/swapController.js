@@ -121,43 +121,90 @@ const updateSwapStatus = async (req, res) => {
     }
 };
 
+//open trade if passed - returns proposals against that id - getSwapProposals
+
+
+//takes trade id and returns entire swap object with preferences from original open market trade entry
 const getSwapDetails = async (req, res) => {
     try {
-        console.log(req.query.swapId);
-        const swap = await db.swaps.findByPk(req.query.swapId);
-        if (swap) {
-            let walletId = req.query.walletId;
-            const metadata = JSON.parse(swap.metadata);
-            console.log(metadata);
-            if (
-                swap.init_address !== walletId &&
-                swap.accept_address !== walletId
-            ) {
-                res.status(200).json({
-                    success: false,
-                    message: "not authorized to view this swap"
-                });
-            } else {
-                res.json({
-                    success: true,
-                    message: "getSwapDetails",
-                    data: swap
-                });
+        const response = await db.swaps.findOne({          
+            where: {
+                trade_id: req.query.trade_id,                        
             }
-        } else {
-            res.status(200).json({
-                success: false,
-                message: "swap details not found"
+        });
+
+        // Convert metadata and swap_preferences to JSON if they are valid JSON strings
+        const formattedResponse = async() => {
+           
+            const swapJSON = response.toJSON();
+            let formattedSwap = {
+                ...swapJSON,
+                metadata: tryParseJSON(swapJSON.metadata),
+                
+                created_at: swapJSON.createdAt,
+                updated_at: swapJSON.updatedAt,   
+                swap_preferences: null,             
+            };
+            if (swapJSON.swap_mode === SwapMode.OPEN){
+                 formattedSwap.swap_preferences = await findswapPreferences(response.open_trade_id);
+            }
+            // Remove original createdAt and updatedAt fields
+            delete formattedSwap.createdAt;
+            delete formattedSwap.updatedAt;
+            return formattedSwap;
+        };
+
+       
+
+        if (response) {
+            res.json({
+                success: true,
+                message: "get_swap_details_against_trade_id",
+                data: await formattedResponse()
             });
         }
     } catch (err) {
-        console.log(err);
-        res.status(500).json({
-            success: false,
-            message: `***getSwapDetails error -> ${err}`
-        });
+        handleError(res, err, "get_swap_details_against_trade_id error");
     }
 };
+
+
+const findswapPreferences = async(open_trade_idA) => {
+    try {
+        const response = await db.swaps.findOne({   
+            where: {
+                [Op.and]: [
+                    { swap_mode: SwapMode.OPEN },
+                    { open_trade_id: open_trade_idA},
+                    { trade_id: null },
+                ]
+            }
+        });
+
+        const formattedResponse = () => {
+            const swapJSON =  response.toJSON();
+            const formattedSwap = {
+                swap_preferences: tryParseJSON(swapJSON.swap_preferences),
+            };
+            // Remove original createdAt and updatedAt fields
+
+            return formattedSwap;
+        };
+
+        if (response) {
+            res.json({
+                success: true,
+                message: "get_open_swap_preference_for_open_trade_id",
+                data: formattedResponse()
+            });
+        }
+    } catch (err) {
+        handleError(res, err, "get_open_swap_preference_for_open_trade_id error");
+    }
+};
+
+
+
 
 const getPrivatePending = async (req, res) => {
 
@@ -204,6 +251,8 @@ const getPrivatePending = async (req, res) => {
         });
     }
 };
+
+
 
 //helper function to parse JSON
 // Helper function to parse JSON safely

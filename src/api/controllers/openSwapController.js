@@ -117,6 +117,7 @@ const getSwapPreferences = async (req, res) => {
     }
 };
 
+//this function is only for getting open market
 const getSwapObject = async (req, res) => {
     try {
         const response = await db.swaps.findOne({
