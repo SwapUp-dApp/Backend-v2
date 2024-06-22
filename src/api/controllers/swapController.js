@@ -300,7 +300,8 @@ const getPendingSwaps = async (req, res) => {
         const response = await db.swaps.findAll({
             where: {
                 [Op.and]: {
-                    status: 1,
+                    status: 1,  
+                    swap_preferences: null,               
                     [Op.or]: [
                         { accept_address: req.query.address },
                         { init_address: req.query.address },

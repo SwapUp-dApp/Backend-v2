@@ -1,4 +1,8 @@
 {
     "appService.defaultWebAppToDeploy": "/subscriptions/3f7c9c66-c5e0-4c04-a2e7-a4fcbbb3e867/resourceGroups/appsvc_linux_centralus_basic/providers/Microsoft.Web/sites/swapup-api-dev",
-    "appService.deploySubpath": "."
+    "appService.deploySubpath": ".",
+    "appService.zipIgnorePattern": [
+        "node_modules{,/**}",
+        ".vscode{,/**}"
+    ]
 }
