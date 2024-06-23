@@ -10,6 +10,7 @@ swapRouter
     .get("/history", swapController.history)
     .get("/pending", swapController.getPending)
     .get("/pendingswaps", swapController.getPendingSwaps)
+    .get("/swapshistory", swapController.getSwapHistory)
     .get("/private-swaplist", swapController.getPrivatePending)
     .get("/get-swap-details", swapController.getSwapDetails)
     .post("/signature",swapController.sendSign)
