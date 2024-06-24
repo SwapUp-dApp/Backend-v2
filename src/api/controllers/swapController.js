@@ -133,6 +133,8 @@ const getSwapDetails = async (req, res) => {
             }
         });
 
+        
+
         if (!response) {
             return res.json({
                 success: false,
@@ -143,6 +145,7 @@ const getSwapDetails = async (req, res) => {
         // Convert metadata and swap_preferences to JSON if they are valid JSON strings
         const formattedResponse = async () => {
             const swapJSON = response.toJSON();
+        
             let formattedSwap = {
                 ...swapJSON,
                 metadata: tryParseJSON(swapJSON.metadata),

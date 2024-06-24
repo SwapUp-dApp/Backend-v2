@@ -8,7 +8,9 @@ openSwapRouter
     .get("/list", openSwapController.getOpenSwapList)
     .get("/get-swap", openSwapController.getSwapPreferences)
     .get("/get-swap-by-id", openSwapController.getSwapObject)
+    .get("/myopenswaps", openSwapController.getMyOpenSwapList)
     .post("/propose", openSwapController.proposeOpenSwap)
     .patch("/cancel", openSwapController.cancelSwapOffer)
     .patch("/reject-swap", openSwapController.rejectSwapOffer)
     .patch("/accept", openSwapController.acceptOpenSwap);
+    
