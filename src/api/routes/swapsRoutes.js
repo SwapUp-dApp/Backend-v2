@@ -14,7 +14,7 @@ swapRouter
     .get("/private-swaplist", swapController.getPrivatePending)
     .get("/get-swap-details", swapController.getSwapDetails)
     .post("/signature",swapController.sendSign)
-    .get("/", swapController.getSwapDetails)
+    .patch("/accept", swapController.acceptPrivateSwap)
 
     // open swaps 
     .post("/openswap/" , swapController.newSwap)

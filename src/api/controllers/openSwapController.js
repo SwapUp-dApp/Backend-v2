@@ -208,9 +208,10 @@ const proposeOpenSwap = async (req, res) => {
     }
 };
 
+//used when a user closes their own Open Market Swap 
 const closeOpenSwapOffers = async (req, res) => {
     try {
-        const { open_trade_id } = req.body; // delete all offers based on open_trade_id
+        const { open_trade_id} = req.body; // delete all offers based on open_trade_id
 
         const response = await db.sequelize.transaction(async (t) => {
             const updateOffers = await db.swaps.update(
@@ -238,10 +239,50 @@ const closeOpenSwapOffers = async (req, res) => {
     }
 };
 
+
+//this will cancel an Open Market Swap offer - which will decline all proposal i.e update their status to cancelled
+
+const cancelSwapOffer = async (req, res) => {
+    try {
+        const {open_trade_id, swap_mode, trade_id}  = req.body; // delete all offers based on open_trade_id
+        let response;
+        if(swap_mode === SwapMode.OPEN){
+            response = await db.sequelize.transaction(async (t) => {
+                const updateOffers = await db.swaps.update(
+                    { status: SwapStatus.CANCELLED },
+                    { where: { open_trade_id: open_trade_id, status: SwapStatus.PENDING }, transaction: t }
+                );
+
+                return { updateOffers};
+            });
+        }
+        if(swap_mode === SwapMode.PRIVATE){
+            response = await db.sequelize.transaction(async (t) => {
+                const updateOffers = await db.swaps.update(
+                    { status: SwapStatus.CANCELLED },
+                    { where: { trade_id: trade_id, status: SwapStatus.PENDING }, transaction: t }
+                );
+
+                return { updateOffers};
+            });
+        }
+
+        if (response) {
+            res.json({
+                success: true,
+                message: "cancel_open_swap_offers",
+                data: response
+            });
+        }
+    } catch (err) {
+        handleError(res, err, "cancel_open_swap_offers error");
+    }
+};
+
 const acceptOpenSwap = async (req, res) => {
     try {
-        const { trade_id, open_trade_id, accept_sign } = req.body; //accept offer based on trade_id and remove all other open_trade_id's
-        const swap = await db.swaps.findByPk(swapId);
+        const { accept_sign, tx , notes, timestamp, id, a} = req.body; //accept offer based on trade_id and remove all other open_trade_id's
+        const swap = await db.swaps.findByPk(id);
         if (!swap || swap.status !== SwapStatus.PENDING) {
             return res.status(400).json({
                 success: false,
@@ -253,7 +294,10 @@ const acceptOpenSwap = async (req, res) => {
             const updateSwap = await swap.update({
                 accept_address: accept_address.trim(),
                 accept_sign: accept_sign.trim(),
-                status: SwapStatus.COMPLETED
+                status: SwapStatus.COMPLETED,
+                tx: tx,
+                notes: notes,
+                timestamp: timestamp
             }, { transaction: t });
 
             const declineOffers = await db.swaps.update(
@@ -276,12 +320,46 @@ const acceptOpenSwap = async (req, res) => {
     }
 };
 
+//we are rejecting a swap proposal against an Open Market Swap 
+const rejectSwapOffer = async (req, res) => {
+    try {
+
+        const id = req.query.id; //reject offer based on id
+        const swap = await db.swaps.findByPk(id);
+        if (!swap || swap.status !== SwapStatus.PENDING) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid swap ID or swap is not in a valid state for rejection"
+            });
+        }
+
+        const response = await db.sequelize.transaction(async (t) => {
+            const updateSwap = await swap.update({
+                status: SwapStatus.DECLINED                
+            }, { transaction: t });
+            return { updateSwap};
+        });
+
+        if (response) {
+            res.json({
+                success: true,
+                message: "rejected_swap",
+                data: response
+            });
+        }
+    } catch (err) {
+        handleError(res, err, "rejected_swap error");
+    }
+};
+
 export const openSwapController = {
     createOpenSwap,
     getOpenSwapList,
     proposeOpenSwap,
-    closeOpenSwapOffers,
+    cancelSwapOffer,
     acceptOpenSwap,
     getSwapPreferences,
-    getSwapObject
+    getSwapObject,
+    rejectSwapOffer,
+
 };

@@ -422,6 +422,49 @@ const getSwapHistory = async (req, res) => {
     }
 };
 
+
+
+const acceptPrivateSwap = async (req, res) => {
+    try {
+        const { accept_sign, tx , notes, timestamp, id, accept_address} = req.body; //accept offer based on trade_id and remove all other open_trade_id's
+        const swap = await db.swaps.findByPk(id);
+        if (!swap || swap.status !== SwapStatus.PENDING) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid swap ID or swap is not in a valid state for acceptance"
+            });
+        }
+
+        const response = await db.sequelize.transaction(async (t) => {
+            const updateSwap = await swap.update({
+                accept_address: accept_address.trim(),
+                accept_sign: accept_sign.trim(),
+                status: SwapStatus.COMPLETED,
+                tx: tx,
+                notes: notes,
+                timestamp: timestamp
+            }, { transaction: t });
+
+            
+
+            return { updateSwap };
+        });
+
+        if (response) {
+            res.json({
+                success: true,
+                message: "accept_private_swap",
+                data: response
+            });
+        }
+    } catch (err) {
+        handleError(res, err, "accept_private_swap error");
+    }
+};
+
+
+
+
 export const swapController = {
     test,
     newSwap,
@@ -433,5 +476,6 @@ export const swapController = {
     getSwapDetails,
     getPrivatePending,
     getPendingSwaps,
-    getSwapHistory
+    getSwapHistory,
+    acceptPrivateSwap
 };
