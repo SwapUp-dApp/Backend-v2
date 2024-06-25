@@ -82,6 +82,8 @@ const getOpenSwapList = async (req, res) => {
 };
 
 //Sajjad please take a look - need to get number of offers against the open_trade_id
+
+
 const getMyOpenSwapList = async (req, res) => {
     try {
         const response = await db.swaps.findAll({
@@ -91,15 +93,13 @@ const getMyOpenSwapList = async (req, res) => {
                     trade_id: null,
                     accept_address: null,
                     init_address: req.query.address,
-                    status: SwapStatus.PENDING
-                }
-            }
+                    status: SwapStatus.PENDING,
+                },
+            },
         });
 
-
-
         // Convert metadata and swap_preferences to JSON if they are valid JSON strings
-        const formattedResponse = response.map(async (swap) => {
+        const formattedResponsePromises = response.map(async (swap) => {
             const swapJSON = swap.toJSON();
             let formattedSwap = {
                 ...swapJSON,
@@ -115,10 +115,10 @@ const getMyOpenSwapList = async (req, res) => {
                     where: {
                         open_trade_id: swapJSON.open_trade_id,
                         swap_preferences: null,
-                    }
+                    },
                 });
                 if (numberofoffers) {
-                    formattedSwap.number_of_offers = numberofoffers.length
+                    formattedSwap.number_of_offers = numberofoffers.length;
                 }
             } else {
                 formattedSwap.number_of_offers = 0;
@@ -127,25 +127,20 @@ const getMyOpenSwapList = async (req, res) => {
             delete formattedSwap.createdAt;
             delete formattedSwap.updatedAt;
             return formattedSwap;
-        }
+        });
 
-            // Remove original createdAt and updatedAt fields
+        // Await all promises to resolve
+        const formattedResponse = await Promise.all(formattedResponsePromises);
 
-
-        );
-
-        if (response) {
-            res.json({
-                success: true,
-                message: "get_my_open_swap_list",
-                data: formattedResponse
-            });
-        }
+        res.json({
+            success: true,
+            message: "get_my_open_swap_list",
+            data: formattedResponse,
+        });
     } catch (err) {
         handleError(res, err, "get_my_open_swap_list error");
     }
 };
-
 
 
 
