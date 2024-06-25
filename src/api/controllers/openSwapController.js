@@ -100,8 +100,8 @@ const getMyOpenSwapList = async (req, res) => {
 
         // Convert metadata and swap_preferences to JSON if they are valid JSON strings
         const formattedResponse = response.map(async (swap) => {
-            let swapJSON = swap.toJSON();
-            const formattedSwap = {
+            const swapJSON = swap.toJSON();
+            let formattedSwap = {
                 ...swapJSON,
                 metadata: tryParseJSON(swapJSON.metadata),
                 swap_preferences: tryParseJSON(swapJSON.swap_preferences),
@@ -138,7 +138,7 @@ const getMyOpenSwapList = async (req, res) => {
             res.json({
                 success: true,
                 message: "get_my_open_swap_list",
-                data: formattedResponse()
+                data: formattedResponse
             });
         }
     } catch (err) {
