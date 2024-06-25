@@ -343,7 +343,7 @@ const cancelSwapOffer = async (req, res) => {
 
 const acceptOpenSwap = async (req, res) => {
     try {
-        const { accept_sign, tx, notes, timestamp, id, a } = req.body; //accept offer based on trade_id and remove all other open_trade_id's
+        const {  accept_sign, tx , notes, timestamp, id, accept_address } = req.body; //accept offer based on trade_id and remove all other open_trade_id's
         const swap = await db.swaps.findByPk(id);
         if (!swap || swap.status !== SwapStatus.PENDING) {
             return res.status(400).json({

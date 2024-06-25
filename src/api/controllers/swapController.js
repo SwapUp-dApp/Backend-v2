@@ -440,8 +440,8 @@ const acceptPrivateSwap = async (req, res) => {
 
         const response = await db.sequelize.transaction(async (t) => {
             const updateSwap = await swap.update({
-                accept_address: accept_address.trim(),
-                accept_sign: accept_sign.trim(),
+                accept_address: accept_address.trim() || '',
+                accept_sign: accept_sign.trim() || '',
                 status: SwapStatus.COMPLETED,
                 tx: tx,
                 notes: notes,
