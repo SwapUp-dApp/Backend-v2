@@ -81,7 +81,7 @@ const getOpenSwapList = async (req, res) => {
     }
 };
 
-
+//Sajjad please take a look - need to get number of offers against the open_trade_id
 const getMyOpenSwapList = async (req, res) => {
     try {
         const response = await db.swaps.findAll({
@@ -97,27 +97,48 @@ const getMyOpenSwapList = async (req, res) => {
         });
 
 
+
         // Convert metadata and swap_preferences to JSON if they are valid JSON strings
-        const formattedResponse = response.map(swap => {
-            const swapJSON = swap.toJSON();
+        const formattedResponse = response.map(async (swap) => {
+            let swapJSON = swap.toJSON();
             const formattedSwap = {
                 ...swapJSON,
                 metadata: tryParseJSON(swapJSON.metadata),
                 swap_preferences: tryParseJSON(swapJSON.swap_preferences),
                 created_at: swapJSON.createdAt,
                 updated_at: swapJSON.updatedAt,
+                number_of_offers: 0,
             };
-            // Remove original createdAt and updatedAt fields
+
+            if (swapJSON.swap_mode === 0) {
+                const numberofoffers = await db.swaps.findAll({
+                    where: {
+                        open_trade_id: swapJSON.open_trade_id,
+                        swap_preferences: null,
+                    }
+                });
+                if (numberofoffers) {
+                    formattedSwap.number_of_offers = numberofoffers.length
+                }
+            } else {
+                formattedSwap.number_of_offers = 0;
+            }
+
             delete formattedSwap.createdAt;
             delete formattedSwap.updatedAt;
             return formattedSwap;
-        });
+        }
+
+            // Remove original createdAt and updatedAt fields
+
+
+        );
 
         if (response) {
             res.json({
                 success: true,
                 message: "get_my_open_swap_list",
-                data: formattedResponse
+                data: formattedResponse()
             });
         }
     } catch (err) {

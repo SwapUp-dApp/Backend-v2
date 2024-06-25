@@ -123,7 +123,7 @@ const updateSwapStatus = async (req, res) => {
 
 //open trade if passed - returns proposals against that id - getSwapProposals
 
-
+//Sajjad Reference Function
 //takes trade id and returns entire swap object with preferences from original open market trade entry
 const getSwapDetails = async (req, res) => {
     try {
