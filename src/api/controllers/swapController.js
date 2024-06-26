@@ -43,29 +43,21 @@ const newSwap = async (req, res) => {
     }
 };
 
-const updateSwap = async (req, res) => {
+const counterSwapOffer = async (req, res) => {
+    const { metadata, init_sign, init_address, accept_address, id, open_trade_id, trading_chain } = req.body;
     try {
-        var metadata = req.body.metadata;
-
-        console.log("req", req);
         const response = await db.swaps.update(
             {
                 metadata: JSON.stringify(metadata),
-                // status: 1, //1 is pending
-                init_address: "" + req.body.init_address.trim(),
-                accept_address: "" + req.body.accept_address.trim(),
-                init_sign: "" + req.body.init_sign.trim(),
-
-                swap_mode: req.body.swap_mode,
-                open_trade_id: null,
-                trading_chain: req.body.trading_chain,
+                init_address: init_address.trim(),
+                accept_address: accept_address.trim(),
+                init_sign: init_sign.trim(),
+                open_trade_id: open_trade_id ? open_trade_id : null,
+                trading_chain: trading_chain,
                 status: SwapStatus.PENDING,
-                offer_type: req.body.offer_type,
-                trade_id: req.body.trade_id,
-                swap_preferences: null,
-
+                offer_type: OfferType.COUNTER,
             },
-            { where: { id: req.body.id } }
+            { where: { id: id } }
         );
 
         if (response) {
@@ -133,7 +125,7 @@ const getSwapDetails = async (req, res) => {
             }
         });
 
-        
+
 
         if (!response) {
             return res.json({
@@ -145,7 +137,7 @@ const getSwapDetails = async (req, res) => {
         // Convert metadata and swap_preferences to JSON if they are valid JSON strings
         const formattedResponse = async () => {
             const swapJSON = response.toJSON();
-        
+
             let formattedSwap = {
                 ...swapJSON,
                 metadata: tryParseJSON(swapJSON.metadata),
@@ -233,18 +225,6 @@ const getPrivatePending = async (req, res) => {
         });
     }
 };
-
-//helper function to parse JSON
-// Helper function to parse JSON safely
-function tryParseJSON(jsonString) {
-    try {
-        const parsed = JSON.parse(jsonString);
-        return parsed;
-    } catch (err) {
-        return jsonString; // Return original string if parsing fails
-    }
-}
-
 
 const getPending = async (req, res) => {
     try {
@@ -373,37 +353,37 @@ const getPendingSwaps = async (req, res) => {
 const getSwapHistory = async (req, res) => {
     try {
         const response = await db.swaps.findAll({
-            where: {         
+            where: {
                 [Op.and]: {
-                    swap_preferences: null,                    
+                    swap_preferences: null,
                     [Op.or]: [
-                        {accept_address: req.query.address },
-                        {init_address: req.query.address }
+                        { accept_address: req.query.address },
+                        { init_address: req.query.address }
                     ],
                     [Op.or]: [
-                        {status: SwapStatus.CANCELLED },
-                        {status: SwapStatus.COMPLETED },
-                        {status: SwapStatus.DECLINED },
+                        { status: SwapStatus.CANCELLED },
+                        { status: SwapStatus.COMPLETED },
+                        { status: SwapStatus.DECLINED },
                     ]
-                }            
+                }
             }
         });
 
         // Convert metadata and swap_preferences to JSON if they are valid JSON strings
         const formattedResponse = response.map(swap => {
             const swapJSON = swap.toJSON();
-           
-                const formattedSwap = {
-                   
-                    ...swapJSON,
-                    metadata: tryParseJSON(swapJSON.metadata),
-                    swap_preferences: tryParseJSON(swapJSON.swap_preferences),
-                    created_at: swapJSON.createdAt,
-                    updated_at: swapJSON.updatedAt,
-                    
-                };
-            
-          
+
+            const formattedSwap = {
+
+                ...swapJSON,
+                metadata: tryParseJSON(swapJSON.metadata),
+                swap_preferences: tryParseJSON(swapJSON.swap_preferences),
+                created_at: swapJSON.createdAt,
+                updated_at: swapJSON.updatedAt,
+
+            };
+
+
             // Remove original createdAt and updatedAt fields
             delete formattedSwap.createdAt;
             delete formattedSwap.updatedAt;
@@ -425,11 +405,9 @@ const getSwapHistory = async (req, res) => {
     }
 };
 
-
-
 const acceptPrivateSwap = async (req, res) => {
     try {
-        const { accept_sign, tx , notes, timestamp, id, accept_address} = req.body; //accept offer based on trade_id and remove all other open_trade_id's
+        const { accept_sign, tx, notes, timestamp, id, accept_address } = req.body; //accept offer based on trade_id and remove all other open_trade_id's
         const swap = await db.swaps.findByPk(id);
         if (!swap || swap.status !== SwapStatus.PENDING) {
             return res.status(400).json({
@@ -448,7 +426,7 @@ const acceptPrivateSwap = async (req, res) => {
                 timestamp: timestamp
             }, { transaction: t });
 
-            
+
 
             return { updateSwap };
         });
@@ -465,13 +443,21 @@ const acceptPrivateSwap = async (req, res) => {
     }
 };
 
-
+// Helper function to parse JSON safely
+function tryParseJSON(jsonString) {
+    try {
+        const parsed = JSON.parse(jsonString);
+        return parsed;
+    } catch (err) {
+        return jsonString; // Return original string if parsing fails
+    }
+}
 
 
 export const swapController = {
     test,
     newSwap,
-    updateSwap,
+    counterSwapOffer,
     updateSwapStatus,
     getPending,
     history,

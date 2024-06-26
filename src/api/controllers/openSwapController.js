@@ -142,8 +142,6 @@ const getMyOpenSwapList = async (req, res) => {
     }
 };
 
-
-
 const getSwapPreferences = async (req, res) => {
     try {
         const response = await db.swaps.findOne({
@@ -219,19 +217,6 @@ const getSwapObject = async (req, res) => {
         handleError(res, err, "get_open_swap_object_against_id error");
     }
 };
-
-
-
-
-// Helper function to parse JSON safely
-function tryParseJSON(jsonString) {
-    try {
-        const parsed = JSON.parse(jsonString);
-        return parsed;
-    } catch (err) {
-        return jsonString; // Return original string if parsing fails
-    }
-}
 
 
 const proposeOpenSwap = async (req, res) => {
@@ -343,7 +328,7 @@ const cancelSwapOffer = async (req, res) => {
 
 const acceptOpenSwap = async (req, res) => {
     try {
-        const {  accept_sign, tx , notes, timestamp, id, accept_address } = req.body; //accept offer based on trade_id and remove all other open_trade_id's
+        const { accept_sign, tx, notes, timestamp, id, accept_address } = req.body; //accept offer based on trade_id and remove all other open_trade_id's
         const swap = await db.swaps.findByPk(id);
         if (!swap || swap.status !== SwapStatus.PENDING) {
             return res.status(400).json({
@@ -413,6 +398,16 @@ const rejectSwapOffer = async (req, res) => {
         handleError(res, err, "rejected_swap error");
     }
 };
+
+// Helper function to parse JSON safely
+function tryParseJSON(jsonString) {
+    try {
+        const parsed = JSON.parse(jsonString);
+        return parsed;
+    } catch (err) {
+        return jsonString; // Return original string if parsing fails
+    }
+}
 
 export const openSwapController = {
     createOpenSwap,
