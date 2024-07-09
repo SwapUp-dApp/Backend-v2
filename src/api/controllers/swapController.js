@@ -305,17 +305,18 @@ const sendSign = async (req, res) => {
 };
 
 const getPendingSwaps = async (req, res) => {
+    const { address } = req.query;
+    console.log("wallet", address);
+
     try {
         const response = await db.swaps.findAll({
             where: {
-                [Op.and]: {
-                    status: 1,
-                    swap_preferences: null,
-                    [Op.or]: [
-                        { accept_address: req.query.address },
-                        { init_address: req.query.address },
-                    ]
-                }
+                status: SwapStatus.PENDING,
+                swap_preferences: null,
+                [Op.or]: [
+                    { accept_address: address },
+                    { init_address: address },
+                ]
             }
         });
 
@@ -351,20 +352,18 @@ const getPendingSwaps = async (req, res) => {
 };
 
 const getSwapHistory = async (req, res) => {
+    const { address } = req.query;
+
     try {
         const response = await db.swaps.findAll({
             where: {
-                [Op.and]: {
-                    swap_preferences: null,
-                    [Op.or]: [
-                        { accept_address: req.query.address },
-                        { init_address: req.query.address }
-                    ],
-                    [Op.or]: [
-                        { status: SwapStatus.CANCELLED },
-                        { status: SwapStatus.COMPLETED },
-                        { status: SwapStatus.DECLINED },
-                    ]
+                swap_preferences: null,
+                [Op.or]: [
+                    { accept_address: address },
+                    { init_address: address }
+                ],
+                status: {
+                    [Op.not]: SwapStatus.PENDING
                 }
             }
         });
