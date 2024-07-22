@@ -4,7 +4,7 @@
   "description": "backend api endpoints for swapup.trade",
   "main": "server.js",
   "scripts": {
-    "start": "babel-node ./src/server.js",
+    "start": "nodemon --exec babel-node ./src/server.js",
     "build": "npm ci&& babel ./src --out-dir ./dist --source-maps",
     "start:prod": "npm run build && node ./dist/server.js",
     "dev": "set NODE_ENV=development&& nodemon --exec babel-node ./src/server.js",
@@ -39,6 +39,7 @@
   "devDependencies": {
     "chai": "^4.3.7",
     "chai-http": "^4.3.0",
-    "mocha": "^10.2.0"
+    "mocha": "^10.2.0",
+    "nodemon": "^3.1.4"
   }
 }
