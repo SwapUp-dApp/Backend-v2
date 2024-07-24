@@ -295,12 +295,18 @@ const cancelSwapOffer = async (req, res) => {
         let response;
         if (swap_mode === SwapMode.OPEN) {
             response = await db.sequelize.transaction(async (t) => {
-                const updateOffers = await db.swaps.update(
+
+                const closeOrigOpenSwap = await db.swaps.update(
                     { status: SwapStatus.CANCELLED },
+                    { where: { open_trade_id: open_trade_id, accept_address: null, status: SwapStatus.PENDING }, transaction: t }
+                );
+
+                const declineOffers = await db.swaps.update(
+                    { status: SwapStatus.DECLINED },
                     { where: { open_trade_id: open_trade_id, status: SwapStatus.PENDING }, transaction: t }
                 );
 
-                return { updateOffers };
+                return { closeOrigOpenSwap, declineOffers };
             });
         }
         if (swap_mode === SwapMode.PRIVATE) {
@@ -356,8 +362,6 @@ const acceptOpenSwap = async (req, res) => {
                 { status: SwapStatus.COMPLETED },
                 { where: { open_trade_id: swap.open_trade_id, accept_address: null, status: SwapStatus.PENDING }, transaction: t }
             );
-
-
 
             return { updateSwap, declineOffers, closeOrigOpenSwap };
         });
