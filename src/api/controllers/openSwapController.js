@@ -355,7 +355,7 @@ const acceptOpenSwap = async (req, res) => {
 
             const declineOffers = await db.swaps.update(
                 { status: SwapStatus.DECLINED },
-                { where: { trade_id: swap.trade_id, status: SwapStatus.PENDING }, transaction: t }
+                { where: { open_trade_id: swap.open_trade_id, accept_address: swap.accept_address, status: SwapStatus.PENDING }, transaction: t }
             );
 
             const closeOrigOpenSwap = await db.swaps.update(
