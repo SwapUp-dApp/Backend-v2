@@ -11,6 +11,27 @@ const availableTokens = [
         "address": ""
     },
     {
+        "id": "base",
+        "symbol": "ETH",
+        "name": "Base",
+        "iconUrl": "/assets/svgs/base.svg",
+        "address": ""
+    },
+    {
+        "id": "base-sepolia",
+        "symbol": "ETH",
+        "name": "Base sepolia",
+        "iconUrl": "/assets/svgs/base-sepolia.svg",
+        "address": ""
+    },
+    {
+        "id": "eth-sepolia",
+        "symbol": "ETH",
+        "name": "Sepolia",
+        "iconUrl": "https://metaschool.so/_next/static/media/unknown-logo.7eda54b1.webp",
+        "address": ""
+    },
+    {
         "id": "USDT",
         "symbol": "USDT",
         "name": "Tether USD",
@@ -426,8 +447,9 @@ async function token_breakdown_against_wallet(req, res) {
         const networkBalances = await Promise.all(networks.map(async ({ network, key, name }) => {
             const balance = await getAlchemy(network).core.getBalance(walletId, 'latest');
 
-            const ethTokenObject = availableTokens.find(token => token.id === 'ETH');
-            const commonResponseObject = {
+            const ethTokenObject = availableTokens.find(token => token.id === key);
+
+            const responseObject = {
                 key,
                 network: {
                     iconUrl: ethTokenObject.iconUrl,
@@ -438,27 +460,7 @@ async function token_breakdown_against_wallet(req, res) {
                 balance: Number(Utils.formatEther(balance))
             };
 
-            let computedObject;
-
-            switch (key) {
-                case 'ETH':
-                    computedObject = commonResponseObject;
-                    break;
-                case 'base':
-                    computedObject = { ...commonResponseObject, network: { ...commonResponseObject.network, iconUrl: "https://base-sepolia.blockscout.com/assets/configs/network_icon.svg" } };
-                    break;
-                case 'base-sepolia':
-                    computedObject = { ...commonResponseObject, network: { ...commonResponseObject.network, iconUrl: "/assets/svgs/base-sepolia.svg" } };
-                    break;
-                case 'eth-sepolia':
-                    computedObject = { ...commonResponseObject, network: { ...commonResponseObject.network, iconUrl: "https://base-sepolia.blockscout.com/assets/configs/network_icon.svg" } };
-                    break;
-                default:
-                    computedObject = commonResponseObject;
-                    break;
-            }
-
-            return computedObject;
+            return responseObject;
         }));
 
         // Step 4: Format and combine token balances
