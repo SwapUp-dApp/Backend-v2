@@ -1,13 +1,12 @@
 import { Network, Alchemy } from "alchemy-sdk";
 
-export function getAlchemy() {
+const currentNetwork = process.env.NETWORK === "1" ? Network.ETH_MAINNET : Network.BASE_SEPOLIA;
+
+export function getAlchemy(networkType = currentNetwork) {
     // Optional Config object, but defaults to demo api-key and eth-mainnet.
-    const settings = {
+    let settings = {
         apiKey: process.env.ALCHEMY_KEY, // Replace with your Alchemy API Key.
-        network:
-            process.env.NETWORK === "1"
-                ? Network.ETH_MAINNET
-                : Network.BASE_SEPOLIA // Replace with your network.
+        network: networkType
     };
 
     return new Alchemy(settings);
