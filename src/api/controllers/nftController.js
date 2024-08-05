@@ -69,9 +69,8 @@ async function list_all_wallet_collection(req, res) {
 
             const collectionResponseFormate = {
                 id: firstNftOfCurrentCollections.contract.address,
-                cover: firstNftOfCurrentCollections.media[0].gateway || '',
+                cover: firstNftOfCurrentCollections.media.length > 0 ? firstNftOfCurrentCollections.media[0].gateway || '' : '',
                 collectionName: firstNftOfCurrentCollections.contract.name,
-                totalAssets: Number(firstNftOfCurrentCollections.contract.totalSupply),
                 ownedAssets: currentAllCollections.length,
                 floorPrice: 0,
                 highestRankNft: 0,
