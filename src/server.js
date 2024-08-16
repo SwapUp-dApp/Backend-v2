@@ -8,10 +8,10 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 //parse application/json and look for raw text
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.text());
-app.use(bodyParser.json({ type: 'application/json' }));
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+app.use(bodyParser.text({ limit: '10mb' }));
+app.use(bodyParser.json({ type: 'application/json', limit: '10mb' }));
 
 /**
  * Adding headers to our requests.

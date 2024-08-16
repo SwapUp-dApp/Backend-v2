@@ -13,4 +13,3 @@ openSwapRouter
     .patch("/cancel", openSwapController.cancelSwapOffer)
     .patch("/reject-swap", openSwapController.rejectSwapOffer)
     .patch("/accept", openSwapController.acceptOpenSwap);
-    
