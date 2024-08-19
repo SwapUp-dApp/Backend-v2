@@ -2,7 +2,7 @@
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
-  async up (queryInterface, Sequelize) {
+  async up(queryInterface, Sequelize) {
     /**
      * Add altering commands here.
      *
@@ -21,6 +21,9 @@ module.exports = {
         allowNull: false,
         unique: true
       },
+      twitter_access: {
+        type: Sequelize.TEXT,
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE
@@ -33,13 +36,13 @@ module.exports = {
 
     await queryInterface.createTable("Swaps", {
       id: {
-          allowNull: false,
-          autoIncrement: true,
-          primaryKey: true,
-          type: Sequelize.INTEGER
+        allowNull: false,
+        autoIncrement: true,
+        primaryKey: true,
+        type: Sequelize.INTEGER
       },
       metadata: {
-          type: Sequelize.TEXT
+        type: Sequelize.TEXT
       },
       accept_address: { type: Sequelize.STRING },
       init_address: { type: Sequelize.STRING },
@@ -54,20 +57,20 @@ module.exports = {
       trade_id: { type: Sequelize.STRING, allowNull: true },
       trading_chain: { type: Sequelize.STRING, allowNull: true },
       swap_mode: { type: Sequelize.STRING, allowNull: true },
-      swap_preferences : {type: Sequelize.TEXT},
+      swap_preferences: { type: Sequelize.TEXT },
       createdAt: {
-          allowNull: false,
-          type: Sequelize.DATE
+        allowNull: false,
+        type: Sequelize.DATE
       },
       updatedAt: {
-          allowNull: false,
-          type: Sequelize.DATE
+        allowNull: false,
+        type: Sequelize.DATE
       }
-  });
+    });
 
   },
 
-  async down (queryInterface, Sequelize) {
+  async down(queryInterface, Sequelize) {
     /**
      * Add reverting commands here.
      *
