@@ -1,3 +1,6 @@
+import db from '../../database/models';
+import { tryParseJSON } from '../utils/helpers';
+
 const { TwitterApi } = require('twitter-api-v2');
 function test(req, res) {
   res.send({ network: process.env.NETWORK });
@@ -13,7 +16,7 @@ const swapUpTwitterClient = new TwitterApi({
 });
 
 async function exchange_code_for_access_token(req, res) {
-  const { code, redirectUri } = req.body;
+  const { code, redirectUri, walletAddress } = req.body;
 
   // console.log({ code, redirectUri });
   try {
@@ -30,9 +33,31 @@ async function exchange_code_for_access_token(req, res) {
       scopes: ['tweet.read', 'tweet.write', 'tweet.moderate.write', 'users.read', 'offline.access'],
     });
 
-    // You can now store accessToken and refreshToken for future API requests on behalf of the user
+    // creating user client from accessToken
+    const userClient = new TwitterApi(accessToken);
+    const loggedUserClient = userClient.readWrite;
+
+    // Fetch the authenticated user's account information
+    const userInfo = await loggedUserClient.v2.me();
+
     const createdAt = Date.now();
-    res.json({ accessToken, refreshToken, expiresIn, scope, createdAt });
+    const accessResponseObject = { accessToken, refreshToken, expiresIn, scope, createdAt, userInfo: userInfo.data };
+
+    const updatedUser = await db.users.update(
+      {
+        twitter_access: JSON.stringify(accessResponseObject),
+      },
+      { where: { wallet: walletAddress } }
+    );
+
+    if (accessResponseObject && updatedUser) {
+      res.status(201).json({
+        success: true,
+        message: "User twitter access saved.",
+        updatedUser: updatedUser,
+        twitterAccess: accessResponseObject
+      });
+    }
   } catch (err) {
     console.error('Error exchanging code for access token:', err);
     res.status(500).json({ error: 'Failed to exchange code for access token' });
@@ -43,17 +68,32 @@ async function upload_image_to_twitter(req, res) {
 
   const {
     image,
-    accessToken,
-    refreshToken,
-    createdAt,
     mentions,
     appLink,
     hashtags,
     postTitle,
-    postDescription
+    postDescription,
+    walletAddress
   } = req.body;
 
   try {
+
+    const user = await db.users.findOne({
+      where: { wallet: walletAddress },
+    });
+
+    const getFormattedTwitterAccessOfUser = () => {
+      const swapJSON = user.toJSON();
+
+      let formattedSwap = {
+        ...tryParseJSON(swapJSON.twitter_access),
+      };
+
+      return formattedSwap;
+    };
+
+    const { accessToken, refreshToken, createdAt } = getFormattedTwitterAccessOfUser();
+
     let userClient;
 
     // Refresh the token if it has expired or is about to expire
@@ -83,7 +123,7 @@ async function upload_image_to_twitter(req, res) {
 
     ${postDescription}
 
-    ${appLink ? "Checkout SwapUp \n" + appLink : ''}
+    ${appLink ? "Here is the SwapUp link 👇🏻 \n" + appLink : ''}
 
     ${mentionString}
     ${hashtagString}
@@ -100,7 +140,7 @@ async function upload_image_to_twitter(req, res) {
       },
     });
 
-    res.json({ tweetResponse });
+    res.status(201).json(tweetResponse);
   } catch (err) {
     console.log(err);
     res.status(500).json({
@@ -125,7 +165,7 @@ async function get_refreshed_twitter_client(refreshToken) {
 
   } catch (err) {
     console.error('Error while refreshing token:', err);
-    res.status(500).json({ error: 'Failed to refresh access token' });
+    throw new Error('Failed to refresh access token');
   }
 }
 const isTokenExpired = (createdAt) => {

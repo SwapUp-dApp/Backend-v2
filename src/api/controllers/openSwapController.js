@@ -2,6 +2,7 @@
 import db from "../../database/models";
 import { Op } from "sequelize";
 import { OfferType, SwapMode, SwapStatus } from '../utils/constants.js';
+import { tryParseJSON } from "../utils/helpers";
 
 const handleError = (res, err, message) => {
     console.error(err);
@@ -412,15 +413,6 @@ const rejectSwapOffer = async (req, res) => {
     }
 };
 
-// Helper function to parse JSON safely
-function tryParseJSON(jsonString) {
-    try {
-        const parsed = JSON.parse(jsonString);
-        return parsed;
-    } catch (err) {
-        return jsonString; // Return original string if parsing fails
-    }
-}
 
 export const openSwapController = {
     createOpenSwap,

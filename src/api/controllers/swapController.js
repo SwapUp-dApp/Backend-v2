@@ -1,6 +1,7 @@
 import db from "../../database/models";
 import { Op } from "sequelize";
 import { OfferType, SwapStatus, SwapMode } from '../utils/constants.js';
+import { tryParseJSON } from "../utils/helpers";
 
 function test(req, res) {
     //testDb();
@@ -124,8 +125,6 @@ const getSwapDetails = async (req, res) => {
                 trade_id: req.query.trade_id,
             }
         });
-
-
 
         if (!response) {
             return res.json({
@@ -441,16 +440,6 @@ const acceptPrivateSwap = async (req, res) => {
         handleError(res, err, "accept_private_swap error");
     }
 };
-
-// Helper function to parse JSON safely
-function tryParseJSON(jsonString) {
-    try {
-        const parsed = JSON.parse(jsonString);
-        return parsed;
-    } catch (err) {
-        return jsonString; // Return original string if parsing fails
-    }
-}
 
 
 export const swapController = {
