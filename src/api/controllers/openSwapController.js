@@ -2,15 +2,7 @@
 import db from "../../database/models";
 import { Op } from "sequelize";
 import { OfferType, SwapMode, SwapStatus } from '../utils/constants.js';
-import { tryParseJSON } from "../utils/helpers";
-
-const handleError = (res, err, message) => {
-    console.error(err);
-    res.status(500).json({
-        success: false,
-        message: `${message} -> ${err.message || err}`
-    });
-};
+import { handleError, tryParseJSON } from "../utils/helpers";
 
 const createOpenSwap = async (req, res) => {
     try {

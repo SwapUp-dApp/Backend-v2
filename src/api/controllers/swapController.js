@@ -1,7 +1,7 @@
 import db from "../../database/models";
 import { Op } from "sequelize";
 import { OfferType, SwapStatus, SwapMode } from '../utils/constants.js';
-import { tryParseJSON } from "../utils/helpers";
+import { handleError, tryParseJSON } from "../utils/helpers";
 
 function test(req, res) {
     //testDb();
