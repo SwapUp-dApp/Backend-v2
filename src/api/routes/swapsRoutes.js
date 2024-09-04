@@ -12,7 +12,7 @@ swapRouter
     .get("/pendingswaps", swapController.getPendingSwaps)
     .get("/swapshistory", swapController.getSwapHistory)
     .get("/private-swaplist", swapController.getPrivatePending)
-    .get("/get-swap-details", swapController.getSwapDetails)
+    .get("/get-swap-details/:trade_or_open_trade_id", swapController.getSwapDetails)
     .post("/signature", swapController.sendSign)
     .patch("/accept", swapController.acceptPrivateSwap)
 
