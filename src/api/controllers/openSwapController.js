@@ -74,9 +74,6 @@ const getOpenSwapList = async (req, res) => {
     }
 };
 
-//Sajjad please take a look - need to get number of offers against the open_trade_id
-
-
 const getMyOpenSwapList = async (req, res) => {
     try {
         const response = await db.swaps.findAll({
@@ -170,48 +167,6 @@ const getSwapPreferences = async (req, res) => {
     }
 };
 
-//this function is only for getting open market
-const getSwapObject = async (req, res) => {
-    try {
-        const response = await db.swaps.findOne({
-            where: {
-                [Op.and]: [
-                    { swap_mode: SwapMode.OPEN },
-                    { open_trade_id: req.query.open_trade_id },
-                    { trade_id: null },
-                ]
-            }
-        });
-
-        // Convert metadata and swap_preferences to JSON if they are valid JSON strings
-        const formattedResponse = () => {
-            const swapJSON = response.toJSON();
-            const formattedSwap = {
-                ...swapJSON,
-                metadata: tryParseJSON(swapJSON.metadata),
-                swap_preferences: tryParseJSON(swapJSON.swap_preferences),
-                created_at: swapJSON.createdAt,
-                updated_at: swapJSON.updatedAt,
-            };
-            // Remove original createdAt and updatedAt fields
-            delete formattedSwap.createdAt;
-            delete formattedSwap.updatedAt;
-            return formattedSwap;
-        };
-
-        if (response) {
-            res.json({
-                success: true,
-                message: "get_open_swap_object_against_id",
-                data: formattedResponse()
-            });
-        }
-    } catch (err) {
-        handleError(res, err, "get_open_swap_object_against_id error");
-    }
-};
-
-
 const proposeOpenSwap = async (req, res) => {
     try {
         const { trade_id, metadata, init_address, init_sign, open_trade_id, id, accept_address, trading_chain } = req.body;  //trade_id //metadata is accept_meta // open_trade_id
@@ -279,9 +234,7 @@ const closeOpenSwapOffers = async (req, res) => {
     }
 };
 
-
 //this will cancel an Open Market Swap offer - which will decline all proposal i.e update their status to cancelled
-
 const cancelSwapOffer = async (req, res) => {
     try {
         const { open_trade_id, swap_mode, trade_id } = req.body; // delete all offers based on open_trade_id
@@ -413,8 +366,6 @@ export const openSwapController = {
     cancelSwapOffer,
     acceptOpenSwap,
     getSwapPreferences,
-    getSwapObject,
     rejectSwapOffer,
     getMyOpenSwapList
-
 };

@@ -114,18 +114,31 @@ const updateSwapStatus = async (req, res) => {
     }
 };
 
-//open trade if passed - returns proposals against that id - getSwapProposals
-
-//Sajjad Reference Function
-//takes trade id and returns entire swap object with preferences from original open market trade entry
 const getSwapDetails = async (req, res) => {
     try {
-        const response = await db.swaps.findOne({
+        const tradeOrOpenTradeId = req.params.trade_or_open_trade_id;
+
+        // First, check if a swap exists with trade_id equal to the provided tradeOrOpenTradeId
+        let response = await db.swaps.findOne({
             where: {
-                trade_id: req.query.trade_id,
+                trade_id: tradeOrOpenTradeId,
             }
         });
 
+        // If no swap found with trade_id, check by open_trade_id
+        if (!response) {
+            response = await db.swaps.findOne({
+                where: {
+                    [Op.and]: [
+                        { swap_mode: SwapMode.OPEN },
+                        { open_trade_id: tradeOrOpenTradeId },
+                        { trade_id: null },
+                    ]
+                }
+            });
+        }
+
+        // If no swap is found with either trade_id or open_trade_id, return an error
         if (!response) {
             return res.json({
                 success: false,
@@ -169,13 +182,14 @@ const getSwapDetails = async (req, res) => {
             return formattedSwap;
         };
 
+        // Return the formatted swap object
         res.json({
             success: true,
-            message: "get_swap_details_against_trade_id",
-            data: await formattedResponse()
+            message: "get_swap_details",
+            data: await formattedResponse(),
         });
     } catch (err) {
-        handleError(res, err, "get_swap_details_against_trade_id error");
+        handleError(res, err, "get_swap_details error");
     }
 };
 
