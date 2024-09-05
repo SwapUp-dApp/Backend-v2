@@ -1,9 +1,19 @@
-const fs = require('fs');
-const path = require('path');
-const util = require('util');
+// const fs = require('fs');
+// const path = require('path');
+// const util = require('util');
 
-const readFile = util.promisify(fs.readFile);
-const unlink = util.promisify(fs.unlink);
+// const readFile = util.promisify(fs.readFile);
+// const unlink = util.promisify(fs.unlink);
+
+// export const getBuffer = (image) => {
+//   const filePath = path.join(__dirname, '../../../pictures/', image);
+//   return readFile(filePath);
+// };
+
+// export const deleteFile = (image) => {
+//   const filePath = path.join(__dirname, '../../../pictures/', image);
+//   return unlink(filePath);
+// };
 
 export function tryParseJSON(jsonString) {
   try {
@@ -20,14 +30,4 @@ export const handleError = (res, err, message) => {
     success: false,
     message: `${message} -> ${err.message || err}`
   });
-};
-
-export const getBuffer = (image) => {
-  const filePath = path.join(__dirname, '../../../pictures/', image);
-  return readFile(filePath);
-};
-
-export const deleteFile = (image) => {
-  const filePath = path.join(__dirname, '../../../pictures/', image);
-  return unlink(filePath);
 };
