@@ -105,17 +105,65 @@ async function test_image_creation_and_deletion(req, res) {
    }
 }
 
+// async function exchange_code_for_access_token(req, res) {
+//    const { code, redirectUri, walletAddress } = req.body;
+
+//    // console.log({ code, redirectUri });
+//    try {
+
+//       const newTwitterClient = new TwitterApi({
+//          clientId: process.env.TWITTER_CLIENT_ID,
+//          clientSecret: process.env.TWITTER_CLIENT_SECRET
+//       });
+
+//       const { client: loggedClient, accessToken, refreshToken, expiresIn, scope } = await newTwitterClient.loginWithOAuth2({
+//          code,
+//          redirectUri,
+//          codeVerifier: 'challenge',  // Use the same challenge sent during the authorization request
+//          scopes: ['tweet.read', 'tweet.write', 'tweet.moderate.write', 'users.read', 'offline.access'],
+//       });
+
+//       // creating user client from accessToken
+//       const userClient = new TwitterApi(accessToken);
+//       const loggedUserClient = userClient.readWrite;
+
+//       // Fetch the authenticated user's account information
+//       const userInfo = await loggedUserClient.v2.me();
+
+//       const createdAt = Date.now();
+//       const accessResponseObject = { accessToken, refreshToken, expiresIn, scope, createdAt, userInfo: userInfo.data };
+
+//       const updatedUser = await db.users.update(
+//          {
+//             twitter_access: JSON.stringify(accessResponseObject),
+//          },
+//          { where: { wallet: walletAddress } }
+//       );
+
+//       if (accessResponseObject && updatedUser) {
+//          res.status(201).json({
+//             success: true,
+//             message: "User twitter access saved.",
+//             updatedUser: updatedUser,
+//             twitterAccess: accessResponseObject
+//          });
+//       }
+//    } catch (err) {
+//       console.error('Error exchanging code for access token:', err);
+//       res.status(500).json({ error: 'Failed to exchange code for access token' });
+//    }
+// }
+
 async function exchange_code_for_access_token(req, res) {
    const { code, redirectUri, walletAddress } = req.body;
 
-   // console.log({ code, redirectUri });
    try {
-
       const newTwitterClient = new TwitterApi({
          clientId: process.env.TWITTER_CLIENT_ID,
          clientSecret: process.env.TWITTER_CLIENT_SECRET
       });
 
+      // Exchange the authorization code for access token
       const { client: loggedClient, accessToken, refreshToken, expiresIn, scope } = await newTwitterClient.loginWithOAuth2({
          code,
          redirectUri,
@@ -123,13 +171,17 @@ async function exchange_code_for_access_token(req, res) {
          scopes: ['tweet.read', 'tweet.write', 'tweet.moderate.write', 'users.read', 'offline.access'],
       });
 
-      // creating user client from accessToken
+      // Verify the access token
       const userClient = new TwitterApi(accessToken);
       const loggedUserClient = userClient.readWrite;
 
       // Fetch the authenticated user's account information
       const userInfo = await loggedUserClient.v2.me();
+      if (!userInfo) {
+         throw new Error('Failed to fetch user info');
+      }
 
+      // Save the access response object to the database
       const createdAt = Date.now();
       const accessResponseObject = { accessToken, refreshToken, expiresIn, scope, createdAt, userInfo: userInfo.data };
 
@@ -147,12 +199,15 @@ async function exchange_code_for_access_token(req, res) {
             updatedUser: updatedUser,
             twitterAccess: accessResponseObject
          });
+      } else {
+         res.status(500).json({ error: 'Failed to update user access information' });
       }
    } catch (err) {
       console.error('Error exchanging code for access token:', err);
       res.status(500).json({ error: 'Failed to exchange code for access token' });
    }
 }
+
 
 async function upload_image_to_twitter(req, res) {
 
@@ -188,13 +243,14 @@ async function upload_image_to_twitter(req, res) {
 
       let userClient;
 
+      const refreshedClient = await get_refreshed_twitter_client(refreshToken);
+      userClient = refreshedClient;
+
       // Refresh the token if it has expired or is about to expire
-      if (isTokenExpired(createdAt)) {
-         const refreshedClient = await get_refreshed_twitter_client(refreshToken);
-         userClient = refreshedClient;
-      } else {
-         userClient = new TwitterApi(accessToken);
-      }
+      // if (isTokenExpired(createdAt)) {
+      // } else {
+      //    userClient = new TwitterApi(accessToken);
+      // }
 
       const loggedClient = userClient.readWrite;
 
@@ -222,7 +278,7 @@ async function upload_image_to_twitter(req, res) {
      `.trim();
 
       // Upload the image to Twitter using SwapUp twitter client
-      const mediaId = await loggedClient.v1.uploadMedia(buffer, { mimeType: 'image/jpeg', chunked: true });
+      const mediaId = await swapUpTwitterClient.v1.uploadMedia(buffer, { mimeType: 'image/jpeg', chunked: true });
 
       console.log("Media Id: ", mediaId);
 
