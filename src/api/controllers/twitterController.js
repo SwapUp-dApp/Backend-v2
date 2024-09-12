@@ -458,11 +458,15 @@ const getBufferFromHTMLString = async (htmlString) => {
       // Capture a screenshot of the entire page
       const buffer = await page.screenshot({
          type: 'jpeg',
-         fullPage: true,
-         quality: 40
+         // fullPage: true,
+         quality: 10
       });
 
       await browser.close();
+
+      // Log the buffer size
+      console.log("Buffer Size:", Buffer.byteLength(buffer), "bytes");
+
       return Buffer.from(buffer);
    } catch (error) {
       throw error;
