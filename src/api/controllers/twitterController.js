@@ -105,55 +105,6 @@ async function test_image_creation_and_deletion(req, res) {
    }
 }
 
-// async function exchange_code_for_access_token(req, res) {
-//    const { code, redirectUri, walletAddress } = req.body;
-
-//    // console.log({ code, redirectUri });
-//    try {
-
-//       const newTwitterClient = new TwitterApi({
-//          clientId: process.env.TWITTER_CLIENT_ID,
-//          clientSecret: process.env.TWITTER_CLIENT_SECRET
-//       });
-
-//       const { client: loggedClient, accessToken, refreshToken, expiresIn, scope } = await newTwitterClient.loginWithOAuth2({
-//          code,
-//          redirectUri,
-//          codeVerifier: 'challenge',  // Use the same challenge sent during the authorization request
-//          scopes: ['tweet.read', 'tweet.write', 'tweet.moderate.write', 'users.read', 'offline.access'],
-//       });
-
-//       // creating user client from accessToken
-//       const userClient = new TwitterApi(accessToken);
-//       const loggedUserClient = userClient.readWrite;
-
-//       // Fetch the authenticated user's account information
-//       const userInfo = await loggedUserClient.v2.me();
-
-//       const createdAt = Date.now();
-//       const accessResponseObject = { accessToken, refreshToken, expiresIn, scope, createdAt, userInfo: userInfo.data };
-
-//       const updatedUser = await db.users.update(
-//          {
-//             twitter_access: JSON.stringify(accessResponseObject),
-//          },
-//          { where: { wallet: walletAddress } }
-//       );
-
-//       if (accessResponseObject && updatedUser) {
-//          res.status(201).json({
-//             success: true,
-//             message: "User twitter access saved.",
-//             updatedUser: updatedUser,
-//             twitterAccess: accessResponseObject
-//          });
-//       }
-//    } catch (err) {
-//       console.error('Error exchanging code for access token:', err);
-//       res.status(500).json({ error: 'Failed to exchange code for access token' });
-//    }
-// }
-
 async function exchange_code_for_access_token(req, res) {
    const { code, redirectUri, walletAddress } = req.body;
 
@@ -210,7 +161,6 @@ async function exchange_code_for_access_token(req, res) {
 
 
 async function upload_image_to_twitter(req, res) {
-
    const {
       imageProps,
       mentions,
@@ -221,7 +171,6 @@ async function upload_image_to_twitter(req, res) {
       walletAddress
    } = req.body;
 
-
    try {
       const htmlString = getSwapImageHTMLStringByImageProps(imageProps);
 
@@ -229,58 +178,45 @@ async function upload_image_to_twitter(req, res) {
          where: { wallet: walletAddress },
       });
 
+      if (!user) {
+         throw new Error('User not found');
+      }
+
       const getFormattedTwitterAccessOfUser = () => {
          const userJSON = user.toJSON();
-
-         let formattedSwap = {
-            ...tryParseJSON(userJSON.twitter_access),
-         };
-
-         return formattedSwap;
+         return tryParseJSON(userJSON.twitter_access);
       };
 
       const { accessToken, refreshToken, createdAt } = getFormattedTwitterAccessOfUser();
 
       let userClient;
 
-      const refreshedClient = await get_refreshed_twitter_client(refreshToken);
-      userClient = refreshedClient;
-
-      // Refresh the token if it has expired or is about to expire
-      // if (isTokenExpired(createdAt)) {
-      // } else {
-      //    userClient = new TwitterApi(accessToken);
-      // }
+      if (isTokenExpired(createdAt)) {
+         userClient = await get_refreshed_twitter_client(refreshToken);
+      } else {
+         userClient = new TwitterApi(accessToken);
+      }
 
       const loggedClient = userClient.readWrite;
 
       const buffer = await getBufferFromHTMLString(htmlString);
-      console.log("Buffer: ", buffer);
 
-      // Ensure the buffer is not empty and is valid
       if (!buffer || !buffer.length) {
          throw new Error('Invalid image data');
       }
 
-      // Format mentions, app link, and hashtags
       const mentionString = mentions?.map(mention => `@${mention}`).join(' ') || '';
       const hashtagString = hashtags?.map(hashtag => `#${hashtag}`).join(' ') || '';
 
       const postContent = `
-     ${postTitle}
+         ${postTitle}
+         ${postDescription}
+         ${appLink ? `Here is the SwapUp link 👇🏻 \n${appLink}` : ''}
+         ${mentionString}
+         ${hashtagString}
+      `.trim();
 
-     ${postDescription}
-
-     ${appLink ? "Here is the SwapUp link 👇🏻 \n" + appLink : ''}
-
-     ${mentionString}
-     ${hashtagString}
-     `.trim();
-
-      // Upload the image to Twitter using SwapUp twitter client
-      const mediaId = await swapUpTwitterClient.v1.uploadMedia(buffer, { mimeType: 'image/jpeg', chunked: true });
-
-      console.log("Media Id: ", mediaId);
+      const mediaId = await loggedClient.v1.uploadMedia(buffer, { mimeType: 'image/jpeg', chunked: true });
 
       const tweetData = {
          text: postContent,
@@ -291,22 +227,16 @@ async function upload_image_to_twitter(req, res) {
 
       const tweetResponse = await loggedClient.v2.tweet(tweetData);
 
-
-      // const tweetResponse = await loggedClient.v2.tweetThread([
-      //    'Hello, lets talk about Twitter!',
-      //    { text: 'Twitter is a fantastic social network. Look at this:', media: { media_ids: [mediaId] } },
-      //    'This thread is automatically made with twitter-api-v2 :D',
-      // ]);
-
       res.status(201).json(tweetResponse);
    } catch (err) {
-      console.log(err);
+      console.error('Error uploading image to Twitter:', err.response ? err.response.data : err.message);
       res.status(500).json({
          success: false,
-         message: `***upload_image_to_twitter error -> ${err}`
+         message: `***upload_image_to_twitter error -> ${err.message}`
       });
    }
 }
+
 
 
 // Helper functions
@@ -333,7 +263,11 @@ async function get_refreshed_twitter_client(refreshToken) {
 const isTokenExpired = (createdAt) => {
    const expiresIn = 7200; // 2 hours in seconds
    const expirationTime = createdAt + expiresIn * 1000;
-   return Date.now() >= expirationTime;
+
+   // Optional: Add a 5-minute grace period
+   const gracePeriod = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+   return Date.now() >= expirationTime - gracePeriod;
 };
 
 const getSwapImageHTMLStringByImageProps = (imageProps) => {
@@ -515,8 +449,7 @@ const getBufferFromHTMLString = async (htmlString) => {
       // Capture a screenshot of the entire page
       const buffer = await page.screenshot({
          type: 'jpeg',
-         // fullPage: true,
-         quality: 10
+         quality: 30
       });
 
       await browser.close();
