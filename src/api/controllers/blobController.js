@@ -1,6 +1,8 @@
-import { BlockBlobClient, BlobServiceClient } from '@azure/storage-blob';
+import { BlobServiceClient } from '@azure/storage-blob';
 import multer from 'multer';
-import { handleError } from '../utils/helpers';
+import { handleError, tryParseJSON } from '../utils/helpers';
+import db from '../../database/models';
+import { SUE_BlobPictureType } from '../utils/constants';
 
 const sasToken = process.env.AZURE_BLOB_STORAGE_SAS_TOKEN;
 const accountName = process.env.AZURE_BLOB_STORAGE_ACCOUNT_NAME;
@@ -20,6 +22,13 @@ const upload_profile_picture = async (req, res) => {
       return res.status(400).send('Missing file, picture type, or wallet ID.');
     }
 
+    // Find the user by walletId in the Users table
+    const user = await db.users.findOne({ where: { wallet: walletId } });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
     // Create the blob name from pictureType and walletId
     const blobName = `${pictureType}-${walletId}`;
 
@@ -34,6 +43,28 @@ const upload_profile_picture = async (req, res) => {
     // The URL for the uploaded image
     const imageUrl = blockBlobClient.url;
 
+    // Parse the existing images column (use tryParseJSON)
+    let images = tryParseJSON(user.images);
+
+    // Ensure the images object has both avatar and coverImage keys
+    if (!images.avatar) images.avatar = '';
+    if (!images.coverImage) images.coverImage = '';
+
+    // Update either the avatar or coverImage based on pictureType
+    if (pictureType === SUE_BlobPictureType.AVATAR) {
+      images.avatar = imageUrl;
+    }
+
+    if (pictureType === SUE_BlobPictureType.COVER) {
+      images.coverImage = imageUrl;
+    }
+
+    // Update the user's images column
+    await db.users.update(
+      { images: JSON.stringify(images) },
+      { where: { wallet: walletId } }
+    );
+
     res.status(200).json({ message: 'Image uploaded successfully', url: imageUrl });
   } catch (error) {
     handleError(res, error, "upload_profile_picture error");
@@ -42,11 +73,21 @@ const upload_profile_picture = async (req, res) => {
 
 const delete_profile_picture = async (req, res) => {
   try {
-    const blobName = req.params.blobName;
+    const { pictureType, walletId } = req.body;
 
-    if (!blobName) {
-      return res.status(400).send('Missing the blobName.');
+    if (!pictureType || !walletId) {
+      return res.status(400).send('Missing picture type, or wallet ID.');
     }
+
+    // Find the user by walletId in the Users table
+    const user = await db.users.findOne({ where: { wallet: walletId } });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    // Create the blob name from pictureType and walletId
+    const blobName = `${pictureType}-${walletId}`;
 
     // Get a blockBlobClient for the specified blobs
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
@@ -54,6 +95,24 @@ const delete_profile_picture = async (req, res) => {
     // Delete the blob
     const deleteResult = await blockBlobClient.delete();
     // console.log("delete result: ", deleteResult);
+
+    // Parse the existing images column (use tryParseJSON)
+    let images = tryParseJSON(user.images);
+
+    // Update either the avatar or coverImage based on pictureType
+    if (pictureType === SUE_BlobPictureType.AVATAR) {
+      images.avatar = '';
+    }
+
+    if (pictureType === SUE_BlobPictureType.COVER) {
+      images.coverImage = '';
+    }
+
+    // Update the user's images column
+    await db.users.update(
+      { images: JSON.stringify(images) },
+      { where: { wallet: walletId } }
+    );
 
     res.status(200).json({ message: 'Image deleted successfully' });
   } catch (error) {

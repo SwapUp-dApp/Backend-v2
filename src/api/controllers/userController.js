@@ -38,7 +38,7 @@ async function create_user(req, res) {
           trader: false,
           collector: false,
           premium: false,
-          community_member: false
+          "community-member": false
         })
       }
     });
@@ -99,6 +99,47 @@ async function get_user_twitter_access_by_wallet(req, res) {
   }
 }
 
+async function update_user_points(req, res) {
+  const { walletId } = req.params;
+  const { pointsToAdd } = req.body;
+
+  try {
+    // Find the user by wallet ID
+    const user = await db.users.findOne({ where: { wallet: walletId } });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: `User with wallet ID ${walletId} not found.`
+      });
+    }
+
+    // Ensure pointsToAdd is a valid number
+    if (typeof pointsToAdd !== 'number' || isNaN(pointsToAdd)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid points value provided.'
+      });
+    }
+
+    // Add points to the current points
+    const updatedPoints = user.points + pointsToAdd;
+
+    // Update the user's points in the database
+    user.points = updatedPoints;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Points updated successfully for user with wallet ID ${walletId}.`,
+      data: { points: updatedPoints }
+    });
+  } catch (err) {
+    handleError(res, err, "update_user_points: error");
+  }
+}
+
+
 function test(req, res) {
   res.send({ network: process.env.NETWORK, message: "SwapUp user test route" });
 }
@@ -106,5 +147,6 @@ function test(req, res) {
 export const userController = {
   list_all_users,
   create_user,
-  get_user_twitter_access_by_wallet
+  get_user_twitter_access_by_wallet,
+  update_user_points
 };
