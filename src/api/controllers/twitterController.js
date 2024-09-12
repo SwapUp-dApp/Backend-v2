@@ -228,8 +228,9 @@ async function upload_image_to_twitter(req, res) {
 
       // Use the media ID to create a tweet with the uploaded image
       const tempMediaId = "1834216265935646720";
+
+      // text: postContent,
       const tweetResponse = await loggedClient.v2.tweet({
-         text: postContent,
          media: {
             media_ids: [tempMediaId], // Use the uploaded media ID here
          },
