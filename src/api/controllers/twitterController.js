@@ -216,7 +216,7 @@ async function upload_image_to_twitter(req, res) {
          ${hashtagString}
       `.trim();
 
-      const mediaId = await loggedClient.v1.uploadMedia(buffer, { mimeType: 'image/jpeg', chunked: true });
+      const mediaId = await swapUpTwitterClient.v1.uploadMedia(buffer, { mimeType: 'image/jpeg', chunked: true });
 
       const tweetData = {
          text: postContent,
