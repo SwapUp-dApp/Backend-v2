@@ -230,11 +230,17 @@ async function upload_image_to_twitter(req, res) {
       const tempMediaId = "1834216265935646720";
 
       // text: postContent,
-      const tweetResponse = await loggedClient.v2.tweet({
-         media: {
-            media_ids: [tempMediaId], // Use the uploaded media ID here
-         },
-      });
+      // const tweetResponse = await loggedClient.v2.tweet({
+      //    media: {
+      //       media_ids: [tempMediaId] // Use the uploaded media ID here
+      //    }
+      // });
+
+      const tweetResponse = await loggedClient.v2.tweetThread([
+         'Hello, lets talk about Twitter!',
+         { text: 'Twitter is a fantastic social network. Look at this:', media: { media_ids: [mediaId] } },
+         'This thread is automatically made with twitter-api-v2 :D',
+      ]);
 
       res.status(201).json(tweetResponse);
    } catch (err) {
