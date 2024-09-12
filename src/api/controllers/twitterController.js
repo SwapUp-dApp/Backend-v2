@@ -199,6 +199,7 @@ async function upload_image_to_twitter(req, res) {
       const loggedClient = userClient.readWrite;
 
       const buffer = await getBufferFromHTMLString(htmlString);
+      console.log("Buffer: ", buffer);
 
       // Ensure the buffer is not empty and is valid
       if (!buffer || !buffer.length) {
@@ -223,11 +224,14 @@ async function upload_image_to_twitter(req, res) {
       // Upload the image to Twitter using SwapUp twitter client
       const mediaId = await swapUpTwitterClient.v1.uploadMedia(buffer, { mimeType: 'image/png' });
 
+      console.log("Media Id: ", mediaId);
+
       // Use the media ID to create a tweet with the uploaded image
+      const tempMediaId = "1834216265935646720";
       const tweetResponse = await loggedClient.v2.tweet({
          text: postContent,
          media: {
-            media_ids: [mediaId], // Use the uploaded media ID here
+            media_ids: [tempMediaId], // Use the uploaded media ID here
          },
       });
 
