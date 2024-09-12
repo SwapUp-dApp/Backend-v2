@@ -222,7 +222,7 @@ async function upload_image_to_twitter(req, res) {
      `.trim();
 
       // Upload the image to Twitter using SwapUp twitter client
-      const mediaId = await swapUpTwitterClient.v1.uploadMedia(buffer, { mimeType: 'png' });
+      const mediaId = await swapUpTwitterClient.v1.uploadMedia(buffer, { mimeType: 'jpeg' });
 
       console.log("Media Id: ", mediaId);
 
@@ -233,8 +233,7 @@ async function upload_image_to_twitter(req, res) {
          }
       };
 
-      // const tweetResponse = await loggedClient.v2.tweet(tweetData);
-      const tweetResponse = await loggedClient.v1.tweet('Hello link tweet!', { media_ids: mediaId });
+      const tweetResponse = await loggedClient.v2.tweet(tweetData);
 
 
       // const tweetResponse = await loggedClient.v2.tweetThread([
@@ -440,7 +439,7 @@ const getBufferFromHTMLString = async (htmlString) => {
    try {
 
       const browser = await puppeteer.launch({
-         args: ['--no-sandbox', '--disable-setuid-sandbox'],
+         args: ['--disable-setuid-sandbox'],
       });
 
 
@@ -459,9 +458,9 @@ const getBufferFromHTMLString = async (htmlString) => {
 
       // Capture a screenshot of the entire page
       const buffer = await page.screenshot({
-         type: 'png',
+         type: 'jpeg',
          // fullPage: true,
-         // quality: 10
+         quality: 5
       });
 
       await browser.close();
