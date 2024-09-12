@@ -222,7 +222,7 @@ async function upload_image_to_twitter(req, res) {
      `.trim();
 
       // Upload the image to Twitter using SwapUp twitter client
-      const mediaId = await swapUpTwitterClient.v1.uploadMedia(buffer, { mimeType: 'image/jpeg' });
+      const mediaId = await swapUpTwitterClient.v1.uploadMedia(buffer, { mimeType: 'png' });
 
       console.log("Media Id: ", mediaId);
 
@@ -233,7 +233,9 @@ async function upload_image_to_twitter(req, res) {
          }
       };
 
-      const tweetResponse = await loggedClient.v2.tweet(tweetData);
+      // const tweetResponse = await loggedClient.v2.tweet(tweetData);
+      const tweetResponse = await loggedClient.v1.tweet('Hello link tweet!', { media_ids: mediaId });
+
 
       // const tweetResponse = await loggedClient.v2.tweetThread([
       //    'Hello, lets talk about Twitter!',
@@ -457,9 +459,9 @@ const getBufferFromHTMLString = async (htmlString) => {
 
       // Capture a screenshot of the entire page
       const buffer = await page.screenshot({
-         type: 'jpeg',
+         type: 'png',
          // fullPage: true,
-         quality: 10
+         // quality: 10
       });
 
       await browser.close();
