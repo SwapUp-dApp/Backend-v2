@@ -439,7 +439,7 @@ const getBufferFromHTMLString = async (htmlString) => {
    try {
 
       const browser = await puppeteer.launch({
-         args: ['--disable-setuid-sandbox'],
+         args: ['--no-sandbox', '--disable-setuid-sandbox'],
       });
 
 
@@ -460,7 +460,7 @@ const getBufferFromHTMLString = async (htmlString) => {
       const buffer = await page.screenshot({
          type: 'jpeg',
          // fullPage: true,
-         quality: 5
+         quality: 10
       });
 
       await browser.close();
