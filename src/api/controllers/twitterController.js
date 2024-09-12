@@ -233,7 +233,7 @@ async function upload_image_to_twitter(req, res) {
          }
       };
 
-      const tweetResponse = await swapUpTwitterClient.v2.tweet(tweetData);
+      const tweetResponse = await loggedClient.v2.tweet(tweetData);
 
 
       // const tweetResponse = await loggedClient.v2.tweetThread([
