@@ -175,10 +175,10 @@ async function upload_image_to_twitter(req, res) {
       });
 
       const getFormattedTwitterAccessOfUser = () => {
-         const swapJSON = user.toJSON();
+         const userJSON = user.toJSON();
 
          let formattedSwap = {
-            ...tryParseJSON(swapJSON.twitter_access),
+            ...tryParseJSON(userJSON.twitter_access),
          };
 
          return formattedSwap;
