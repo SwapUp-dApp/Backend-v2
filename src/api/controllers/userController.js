@@ -123,7 +123,7 @@ async function update_user_points(req, res) {
     let updatedCounterPartPoints = null;
 
     if (counterPartyWalletId) {
-      updatedCounterpartPoints = await updateUserPointsByWallet(counterPartyWalletId, pointsToAdd);
+      updatedCounterPartPoints = await updateUserPointsByWallet(counterPartyWalletId, pointsToAdd);
     }
 
     return res.status(200).json({
