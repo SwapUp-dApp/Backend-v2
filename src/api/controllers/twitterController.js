@@ -108,14 +108,13 @@ async function test_image_creation_and_deletion(req, res) {
 async function exchange_code_for_access_token(req, res) {
    const { code, redirectUri, walletAddress } = req.body;
 
-   // console.log({ code, redirectUri });
    try {
-
       const newTwitterClient = new TwitterApi({
          clientId: process.env.TWITTER_CLIENT_ID,
          clientSecret: process.env.TWITTER_CLIENT_SECRET
       });
 
+      // Exchange the authorization code for access token
       const { client: loggedClient, accessToken, refreshToken, expiresIn, scope } = await newTwitterClient.loginWithOAuth2({
          code,
          redirectUri,
@@ -123,13 +122,17 @@ async function exchange_code_for_access_token(req, res) {
          scopes: ['tweet.read', 'tweet.write', 'tweet.moderate.write', 'users.read', 'offline.access'],
       });
 
-      // creating user client from accessToken
+      // Verify the access token
       const userClient = new TwitterApi(accessToken);
       const loggedUserClient = userClient.readWrite;
 
       // Fetch the authenticated user's account information
       const userInfo = await loggedUserClient.v2.me();
+      if (!userInfo) {
+         throw new Error('Failed to fetch user info');
+      }
 
+      // Save the access response object to the database
       const createdAt = Date.now();
       const accessResponseObject = { accessToken, refreshToken, expiresIn, scope, createdAt, userInfo: userInfo.data };
 
@@ -147,6 +150,8 @@ async function exchange_code_for_access_token(req, res) {
             updatedUser: updatedUser,
             twitterAccess: accessResponseObject
          });
+      } else {
+         res.status(500).json({ error: 'Failed to update user access information' });
       }
    } catch (err) {
       console.error('Error exchanging code for access token:', err);
@@ -154,8 +159,8 @@ async function exchange_code_for_access_token(req, res) {
    }
 }
 
-async function upload_image_to_twitter(req, res) {
 
+async function upload_image_to_twitter(req, res) {
    const {
       imageProps,
       mentions,
@@ -166,7 +171,6 @@ async function upload_image_to_twitter(req, res) {
       walletAddress
    } = req.body;
 
-
    try {
       const htmlString = getSwapImageHTMLStringByImageProps(imageProps);
 
@@ -174,24 +178,21 @@ async function upload_image_to_twitter(req, res) {
          where: { wallet: walletAddress },
       });
 
+      if (!user) {
+         throw new Error('User not found');
+      }
+
       const getFormattedTwitterAccessOfUser = () => {
          const userJSON = user.toJSON();
-
-         let formattedSwap = {
-            ...tryParseJSON(userJSON.twitter_access),
-         };
-
-         return formattedSwap;
+         return tryParseJSON(userJSON.twitter_access);
       };
 
       const { accessToken, refreshToken, createdAt } = getFormattedTwitterAccessOfUser();
 
       let userClient;
 
-      // Refresh the token if it has expired or is about to expire
       if (isTokenExpired(createdAt)) {
-         const refreshedClient = await get_refreshed_twitter_client(refreshToken);
-         userClient = refreshedClient;
+         userClient = await get_refreshed_twitter_client(refreshToken);
       } else {
          userClient = new TwitterApi(accessToken);
       }
@@ -200,46 +201,42 @@ async function upload_image_to_twitter(req, res) {
 
       const buffer = await getBufferFromHTMLString(htmlString);
 
-      // Ensure the buffer is not empty and is valid
       if (!buffer || !buffer.length) {
          throw new Error('Invalid image data');
       }
 
-      // Format mentions, app link, and hashtags
       const mentionString = mentions?.map(mention => `@${mention}`).join(' ') || '';
       const hashtagString = hashtags?.map(hashtag => `#${hashtag}`).join(' ') || '';
 
       const postContent = `
-     ${postTitle}
+         ${postTitle}
+         ${postDescription}
+         ${appLink ? `Here is the SwapUp link 👇🏻 \n${appLink}` : ''}
+         ${mentionString}
+         ${hashtagString}
+      `.trim();
 
-     ${postDescription}
+      const mediaId = await swapUpTwitterClient.v1.uploadMedia(buffer, { mimeType: 'image/jpeg', chunked: true });
 
-     ${appLink ? "Here is the SwapUp link 👇🏻 \n" + appLink : ''}
-
-     ${mentionString}
-     ${hashtagString}
-     `.trim();
-
-      // Upload the image to Twitter using SwapUp twitter client
-      const mediaId = await swapUpTwitterClient.v1.uploadMedia(buffer, { mimeType: 'image/png' });
-
-      // Use the media ID to create a tweet with the uploaded image
-      const tweetResponse = await loggedClient.v2.tweet({
+      const tweetData = {
          text: postContent,
          media: {
-            media_ids: [mediaId], // Use the uploaded media ID here
-         },
-      });
+            media_ids: [mediaId]
+         }
+      };
+
+      const tweetResponse = await loggedClient.v2.tweet(tweetData);
 
       res.status(201).json(tweetResponse);
    } catch (err) {
-      console.log(err);
+      console.error('Error uploading image to Twitter:', err.response ? err.response.data : err.message);
       res.status(500).json({
          success: false,
-         message: `***upload_image_to_twitter error -> ${err}`
+         message: `***upload_image_to_twitter error -> ${err.message}`
       });
    }
 }
+
 
 
 // Helper functions
@@ -266,7 +263,11 @@ async function get_refreshed_twitter_client(refreshToken) {
 const isTokenExpired = (createdAt) => {
    const expiresIn = 7200; // 2 hours in seconds
    const expirationTime = createdAt + expiresIn * 1000;
-   return Date.now() >= expirationTime;
+
+   // Optional: Add a 5-minute grace period
+   const gracePeriod = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+   return Date.now() >= expirationTime - gracePeriod;
 };
 
 const getSwapImageHTMLStringByImageProps = (imageProps) => {
@@ -427,8 +428,13 @@ const getSwapHTMLContentBySwapTokens = (swapTokens, maxSwapTokenToShow) => {
 const getBufferFromHTMLString = async (htmlString) => {
    try {
 
-      const browser = await puppeteer.launch();
+      const browser = await puppeteer.launch({
+         args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+
+
       const page = await browser.newPage();
+      await page.setViewport({ width: 1280, height: 720 });
 
       await page.setContent(htmlString, {
          waitUntil: 'domcontentloaded' // Ensure the DOM is fully loaded
@@ -442,12 +448,15 @@ const getBufferFromHTMLString = async (htmlString) => {
 
       // Capture a screenshot of the entire page
       const buffer = await page.screenshot({
-         type: 'webp',
-         fullPage: true,
-         quality: 100
+         type: 'jpeg',
+         quality: 30
       });
 
       await browser.close();
+
+      // Log the buffer size
+      console.log("Buffer Size:", Buffer.byteLength(buffer), "bytes");
+
       return Buffer.from(buffer);
    } catch (error) {
       throw error;
