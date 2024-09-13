@@ -3,6 +3,7 @@ import db from "../../database/models";
 import { Op } from "sequelize";
 import { OfferType, SwapMode, SwapStatus } from '../utils/constants.js';
 import { handleError, tryParseJSON } from "../utils/helpers";
+import { updateUserTagsIfFirstTrade } from "../utils/userTagsUpdater";
 
 const createOpenSwap = async (req, res) => {
     try {
@@ -308,6 +309,9 @@ const acceptOpenSwap = async (req, res) => {
                 { status: SwapStatus.COMPLETED },
                 { where: { open_trade_id: swap.open_trade_id, accept_address: null, status: SwapStatus.PENDING }, transaction: t }
             );
+
+            // Update tags for both users
+            await updateUserTagsIfFirstTrade(db, swap.init_address, accept_address, t);
 
             return { updateSwap, declineOffers, closeOrigOpenSwap };
         });

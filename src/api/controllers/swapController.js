@@ -2,6 +2,7 @@ import db from "../../database/models";
 import { Op } from "sequelize";
 import { OfferType, SwapStatus, SwapMode } from '../utils/constants.js';
 import { handleError, tryParseJSON } from "../utils/helpers";
+import { updateUserTagsIfFirstTrade } from "../utils/userTagsUpdater";
 
 function test(req, res) {
     //testDb();
@@ -438,7 +439,8 @@ const acceptPrivateSwap = async (req, res) => {
                 timestamp: timestamp
             }, { transaction: t });
 
-
+            // Update tags for both users
+            await updateUserTagsIfFirstTrade(db, swap.init_address, accept_address, t);
 
             return { updateSwap };
         });
