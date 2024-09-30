@@ -32,7 +32,7 @@ async function create_user(req, res) {
         title: title,
         description: description,
         images: JSON.stringify({ avatar: '', coverImage: '' }),
-        points: points,
+        points: JSON.stringify(points),
         social_links: JSON.stringify({ twitter: '', warpcast: '' }),
         tags: JSON.stringify(tags)
       }
@@ -40,12 +40,7 @@ async function create_user(req, res) {
 
     // Format the user object before sending the response, excluding twitter_access
     const { twitter_access, ...restUserData } = user.dataValues;
-    const formattedUser = {
-      ...restUserData,
-      images: tryParseJSON(restUserData.images),
-      social_links: tryParseJSON(restUserData.social_links),
-      tags: tryParseJSON(restUserData.tags)
-    };
+    const formattedUser = getFormattedUserDetails(restUserData);
 
     if (created) {
       console.log("Created user: ", formattedUser);
@@ -107,23 +102,23 @@ async function update_user_points(req, res) {
 
   try {
     const { walletId } = req.params;
-    const { pointsToAdd, counterPartyWalletId } = req.body;
+    const { pointsToAdd, keyType, counterPartyWalletId, defaultPointSystem } = req.body;
 
     // Ensure pointsToAdd is a valid number
-    if (typeof pointsToAdd !== 'number' || isNaN(pointsToAdd)) {
+    if (typeof pointsToAdd !== 'number' || isNaN(pointsToAdd) || !keyType) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid points value provided.'
+        message: 'Invalid points or key type provided.'
       });
     }
     // Update points for the main user
-    const updatedPoints = await updateUserPointsByWallet(walletId, pointsToAdd);
+    const updatedPoints = await updateUserPointsByWallet(walletId, pointsToAdd, keyType, defaultPointSystem);
 
     // Update points for the counterpart user, if provided
     let updatedCounterPartPoints = null;
 
     if (counterPartyWalletId) {
-      updatedCounterPartPoints = await updateUserPointsByWallet(counterPartyWalletId, pointsToAdd);
+      updatedCounterPartPoints = await updateUserPointsByWallet(counterPartyWalletId, pointsToAdd, keyType, defaultPointSystem);
     }
 
     return res.status(200).json({
@@ -158,12 +153,7 @@ async function get_user_by_wallet(req, res) {
 
     // Format the user object before sending the response, excluding twitter_access
     const { twitter_access, ...restUserData } = user.dataValues;
-    const formattedUser = {
-      ...restUserData,
-      images: tryParseJSON(restUserData.images),
-      social_links: tryParseJSON(restUserData.social_links),
-      tags: tryParseJSON(restUserData.tags)
-    };
+    const formattedUser = getFormattedUserDetails(restUserData);
 
     // Send the formatted user data
     return res.status(200).json({
@@ -208,12 +198,7 @@ async function edit_user_profile(req, res) {
 
     // Format the user object for response, excluding twitter_access
     const { twitter_access, ...restUserData } = user.dataValues;
-    const formattedUser = {
-      ...restUserData,
-      images: tryParseJSON(restUserData.images),
-      social_links: tryParseJSON(restUserData.social_links),
-      tags: tryParseJSON(restUserData.tags)
-    };
+    const formattedUser = getFormattedUserDetails(restUserData);
 
     return res.status(200).json({
       success: true,
@@ -230,26 +215,47 @@ function test(req, res) {
 
 // Helper functions
 
-async function updateUserPointsByWallet(walletId, pointsToAdd) {
-  // Find the user by wallet ID
+async function updateUserPointsByWallet(walletId, pointsToAdd, keyType, defaultPointSystem) {
+  // Fetch the user by walletId
   const user = await db.users.findOne({ where: { wallet: walletId } });
 
   if (!user) {
     throw new Error(`User with wallet ID ${walletId} not found.`);
   }
 
-  // Add points to the current points
-  if (typeof pointsToAdd !== 'number' || isNaN(pointsToAdd)) {
-    throw new Error('Invalid points value provided.');
+  // Parse the user's points object from the database
+  let userPoints = tryParseJSON(user.points);
+
+  // Ensure the points structure exists, initialize if not
+  if (!userPoints || typeof userPoints !== 'object') {
+    userPoints = defaultPointSystem; // Initialize with 0 if the structure is missing
   }
 
-  user.points += pointsToAdd;
+  // Update the points for the specific keyType
+  userPoints[keyType] = (userPoints[keyType] || 0) + pointsToAdd;
 
-  // Save the updated points in the database
+  // Update the total points
+  userPoints.total = Object.keys(userPoints)
+    .filter(key => key !== 'total') // Exclude 'total' key from summing
+    .reduce((sum, key) => sum + userPoints[key], 0);
+
+  // Save the updated points back to the user record
+  user.points = JSON.stringify(userPoints);
   await user.save();
 
-  return user.points;
+  return userPoints;
 }
+
+const getFormattedUserDetails = (restUserData) => {
+  return ({
+    ...restUserData,
+    images: tryParseJSON(restUserData.images),
+    social_links: tryParseJSON(restUserData.social_links),
+    tags: tryParseJSON(restUserData.tags),
+    points: tryParseJSON(restUserData.points)
+  });
+};
+
 
 
 export const userController = {

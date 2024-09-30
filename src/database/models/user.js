@@ -17,7 +17,7 @@ module.exports = (sequelize, DataTypes) => {
             wallet: DataTypes.STRING,
             twitter_access: DataTypes.TEXT,
             images: DataTypes.TEXT,
-            points: DataTypes.INTEGER,
+            points: DataTypes.TEXT,
             title: DataTypes.STRING,
             description: DataTypes.TEXT,
             social_links: DataTypes.TEXT,
