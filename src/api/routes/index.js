@@ -6,15 +6,18 @@ import { swapRouter } from "./swapsRoutes.js";
 import { openSwapRouter } from './openSwapRouter.js';
 import { twitterRouter } from "./twitterRouter.js";
 import { userRouter } from "./userRouter.js";
+import { paymentRouter } from "./paymentRouter.js";
 
 
 const apiRouter = express.Router();
 
-apiRouter.use("/nfts", nftRouter);
-apiRouter.use("/swaps", swapRouter);
-apiRouter.use('/openswap', openSwapRouter);
-apiRouter.use("/wallet", walletRouter);
-apiRouter.use("/twitter", twitterRouter);
-apiRouter.use("/user", userRouter);
+apiRouter
+  .use("/nfts", nftRouter)
+  .use("/swaps", swapRouter)
+  .use('/openswap', openSwapRouter)
+  .use("/wallet", walletRouter)
+  .use("/twitter", twitterRouter)
+  .use("/user", userRouter)
+  .use("/payment", paymentRouter);
 
 export default apiRouter;

@@ -6,7 +6,8 @@ import apiRouter from './api/routes/index.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
-const apiPayloadLimit = `${process.env.API_PAYLOAD_LIMIT || 200}kb`;
+
+export const apiPayloadLimit = `${process.env.API_PAYLOAD_LIMIT || 500}kb`;
 
 //parse application/json and look for raw text
 app.use(bodyParser.json({ limit: apiPayloadLimit }));
