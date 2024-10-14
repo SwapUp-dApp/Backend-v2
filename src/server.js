@@ -6,12 +6,13 @@ import apiRouter from './api/routes/index.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
+const apiPayloadLimit = `${process.env.API_PAYLOAD_LIMIT || 200}kb`;
 
 //parse application/json and look for raw text
-app.use(bodyParser.json({ limit: '10mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
-app.use(bodyParser.text({ limit: '10mb' }));
-app.use(bodyParser.json({ type: 'application/json', limit: '10mb' }));
+app.use(bodyParser.json({ limit: apiPayloadLimit }));
+app.use(bodyParser.urlencoded({ extended: true, limit: apiPayloadLimit }));
+app.use(bodyParser.text({ limit: apiPayloadLimit }));
+app.use(bodyParser.json({ type: 'application/json', limit: apiPayloadLimit }));
 
 /**
  * Adding headers to our requests.
@@ -35,6 +36,9 @@ import rateLimit from 'express-rate-limit';
 const apiLimiter = rateLimit({
   windowMs: (process.env.API_RATE_WINDOW || 15) * 60 * 1000, // 15 minutes
   max: process.env.API_RATE_LIMIT || 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
+  message: {
+    error: 'Too many requests from this IP, please try again later.',
+  },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
