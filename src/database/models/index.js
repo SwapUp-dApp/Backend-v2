@@ -39,6 +39,7 @@ try {
 //TODO: Manually expose all models here
 db.users = require("./user.js")(sequelize, Sequelize);
 db.swaps = require("./swap.js")(sequelize, Sequelize);
+db.payments = require("./payments.js")(sequelize, Sequelize);
 
 // Synchronize all models with the database, creating tables if they don't exist
 // **** ONLY TO BE USED WITHIN DEV EVNIRONMENT FOR FIRST TIME SETUP **** //
