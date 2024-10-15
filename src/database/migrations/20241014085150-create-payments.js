@@ -10,16 +10,16 @@ module.exports = {
         defaultValue: Sequelize.UUIDV4,  // Auto-generate UUID
       },
       paidBy: {
-        type: Sequelize.TEXT,
+        type: Sequelize.STRING,
         allowNull: false,
       },
       subnamePurchase: {
-        type: Sequelize.STRING,
-        allowNull: false,
+        type: Sequelize.TEXT,
+        allowNull: true,
       },
       cryptoPurchase: {
-        type: Sequelize.STRING,
-        allowNull: false,
+        type: Sequelize.TEXT,
+        allowNull: true,
       },
       createdAt: {
         allowNull: false,

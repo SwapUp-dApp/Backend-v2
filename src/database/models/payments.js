@@ -1,31 +1,44 @@
-// models/payment.js
-'use strict';
-import { DataTypes } from 'sequelize';
+"use strict";
+const { Model, DataTypes } = require("sequelize");
 
-export default (sequelize) => {
-  const Payment = sequelize.define('Payment', {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,  // Auto-generate UUID
-      primaryKey: true,
-    },
-    paidBy: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    subnamePurchase: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    cryptoPurchase: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-  }, {});
+module.exports = (sequelize) => {
+  class Payment extends Model {
+    /**
+     * Helper method for defining associations.
+     * This method is not a part of Sequelize lifecycle.
+     * The `models/index` file will call this method automatically.
+     */
+    static associate(models) {
+      // Define any associations here
+      // Example: Payment.belongsTo(models.User);
+    }
+  }
 
-  Payment.associate = function (models) {
-    // Define any associations here (if necessary)
-  };
+  Payment.init(
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,  // Auto-generate UUID
+        primaryKey: true,
+      },
+      paidBy: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      subnamePurchase: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      cryptoPurchase: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+    },
+    {
+      sequelize,
+      modelName: "Payment",
+    }
+  );
 
   return Payment;
 };
