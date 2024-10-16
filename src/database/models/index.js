@@ -26,7 +26,7 @@ let sequelize = new Sequelize({
         acquire: 30000,
         idle: 10000
     },
-    logging: (msg) => logger.info(msg),
+    logging: (msg) => logger.info("sequelize --> " + msg),
 });
 
 
