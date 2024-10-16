@@ -1,12 +1,15 @@
+import Environment from "../../config/index.js";
 import { getAlchemy } from "../../utils/alchemy.js";
+import { handleError } from "../../errors";
+import logger from "../../logger/index.js";
+
 //import { testDb } from "../models/test.js";
 
 function test(req, res) {
     //testDb();
-    res.send({ network: process.env.NETWORK });
+    res.send({ network: Environment.NETWORK_ID });
     let alchemy = getAlchemy();
-    //alchemy.core.resolveName("xyz.3dot0.eth").then(console.log);
-    console.log(alchemy);
+    logger.info(alchemy);
 }
 
 // returns all the nfts owned by a wallet address
@@ -23,14 +26,10 @@ async function list_all_wallet_nfts(req, res) {
             nfts.push(nft);
         }
         //let nfts = await alchemy.nft.getNftsForOwner(req.params.walletId)
-        console.log(nfts);
+        logger.info(nfts);
         res.send(nfts);
     } catch (err) {
-        console.log(err);
-        res.status(500).json({
-            success: false,
-            message: `***list_all_wallet_nfts error -> ${err}`
-        });
+        handleError(res, err, "***list_all_wallet_nfts error");
     }
 }
 
@@ -87,11 +86,7 @@ async function list_all_wallet_collection(req, res) {
         res.send(collectionsResponse);
 
     } catch (err) {
-        console.log(err);
-        res.status(500).json({
-            success: false,
-            message: `***list_all_wallet_collections error -> ${err}`
-        });
+        handleError(res, err, "***list_all_wallet_collections error");
     }
 }
 

@@ -1,4 +1,4 @@
-
+const { default: logger } = require("../../logger");
 const { SwapStatus, SUE_ProfileTags } = require("./constants");
 const { tryParseJSON } = require("./helpers");
 
@@ -24,7 +24,7 @@ const updateUserTagsIfFirstTrade = async (db, initAddress, acceptAddress, transa
         transaction
       });
 
-      // console.log("Completed Swaps count: ", completedSwapsCount);
+      // logger.info("Completed Swaps count: ", completedSwapsCount);
 
       // If it's their first completed swap and they have the "normie" tag
       if (completedSwapsCount === 0 || completedSwapsCount === 1) {
@@ -34,7 +34,7 @@ const updateUserTagsIfFirstTrade = async (db, initAddress, acceptAddress, transa
           userTags = userTags.filter(tag => tag !== SUE_ProfileTags.NORMIE);
           userTags.push(SUE_ProfileTags.TRADER);
 
-          // console.log("User Tags after update: ", userTags);
+          // logger.info("User Tags after update: ", userTags);
           // Update user's tags
           await user.update({ tags: JSON.stringify(userTags) }, { transaction });
         }

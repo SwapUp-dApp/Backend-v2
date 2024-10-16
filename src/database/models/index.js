@@ -1,18 +1,19 @@
 import Sequelize from "sequelize";
-import configuration from "../config.js";
+import databaseConfiguration from "../db.config.js";
+import Environment from "../../config";
+import logger from "../../logger/index.js";
 
-const env = process.env.NODE_ENV || "development";
-const config = configuration[env];
+
 const db = {};
 
 let sequelize = new Sequelize({
-    database: config.database,
-    username: config.username,
-    password: config.password,
-    host: config.host, //tcp:swapup-dev.database.windows.net,1433
-    dialect: config.dialect || "mssql",
+    database: Environment.DB_NAME,
+    username: Environment.DB_USER,
+    password: Environment.DB_PWD,
+    port: Environment.DB_PORT,
+    host: Environment.DB_HOST, //tcp:swapup-dev.database.windows.net,1433
+    dialect: databaseConfiguration.dialect || "mssql",
     encrypt: true,
-    port: config.port,
     dialectOptions: {
         encrypt: true,
         packetSize: 32768,
@@ -24,15 +25,16 @@ let sequelize = new Sequelize({
         min: 0,
         acquire: 30000,
         idle: 10000
-    }
+    },
+    logging: (msg) => logger.info(msg),
 });
 
 
 try {
     sequelize.authenticate();
-    console.log('Connection has been established successfully.');
+    logger.info('Connection has been established successfully.');
 } catch (error) {
-    console.error('Unable to connect to the database:', error);
+    logger.error(`Unable to connect to the database: ${error.message}`);
 }
 
 
@@ -45,10 +47,10 @@ db.payments = require("./payments.js")(sequelize, Sequelize);
 // **** ONLY TO BE USED WITHIN DEV EVNIRONMENT FOR FIRST TIME SETUP **** //
 // sequelize.sync()
 //     .then(() => {
-//         console.log('All models were synchronized successfully.');
+//         logger.info('All models were synchronized successfully.');
 //     })
 //     .catch(err => {
-//         console.error('An error occurred while synchronizing models:', err);
+//         logger.error('An error occurred while synchronizing models:', err);
 //     });
 
 db.sequelize = sequelize;

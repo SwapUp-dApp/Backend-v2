@@ -1,6 +1,8 @@
 import { Network, Utils } from "alchemy-sdk";
 import db from "../../database/models";
 import { getAlchemy } from "../../utils/alchemy";
+import Environment from "../../config";
+import logger from "../../logger";
 
 const availableTokens = [
     {
@@ -441,11 +443,9 @@ async function token_breakdown_against_wallet(req, res) {
 }
 
 function test(req, res) {
-    //testDb();
-    res.send({ network: process.env.NETWORK });
     let alchemy = getAlchemy();
-    //alchemy.core.resolveName("xyz.3dot0.eth").then(console.log);
-    console.log(alchemy);
+    logger.info(alchemy);
+    res.send({ network: Environment.NETWORK_ID });
 }
 
 export const walletController = { token_breakdown_against_wallet, test };

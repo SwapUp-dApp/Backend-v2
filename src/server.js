@@ -3,11 +3,15 @@ import "dotenv/config"; //preload all the environment values
 import express from 'express';
 import bodyParser from 'body-parser';
 import apiRouter from './api/routes/index.js';
+import rateLimit from 'express-rate-limit';
+import Environment from "./config/index.js";
+import logger from "./logger/index.js";
+import { handleError, CustomError } from "./errors";
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = Environment.PORT || 3000;
 
-export const apiPayloadLimit = `${process.env.API_PAYLOAD_LIMIT || 500}kb`;
+export const apiPayloadLimit = `${Environment.API_PAYLOAD_LIMIT || 500}kb`;
 
 //parse application/json and look for raw text
 app.use(bodyParser.json({ limit: apiPayloadLimit }));
@@ -32,11 +36,9 @@ app.use((req, res, next) => {
 });
 
 /* apply rate limit */
-import rateLimit from 'express-rate-limit';
-
 const apiLimiter = rateLimit({
-  windowMs: (process.env.API_RATE_WINDOW || 15) * 60 * 1000, // 15 minutes
-  max: process.env.API_RATE_LIMIT || 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
+  windowMs: (Environment.API_RATE_WINDOW || 15) * 60 * 1000, // 15 minutes
+  max: Environment.API_RATE_LIMIT || 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
   message: {
     error: 'Too many requests from this IP, please try again later.',
   },
@@ -44,13 +46,36 @@ const apiLimiter = rateLimit({
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
-app.use("/api", apiLimiter, apiRouter);
-app.listen(port);
-
+// Logging middleware to track all requests
 app.use((req, res, next) => {
-  const error = Error("Not found");
-  res.statusCode = 404;
-  res.send({ error: error.message });
+  logger.info(`Received request: ${req.method} ${req.url}`);
+  next();
 });
 
-console.log('SwapUp RESTful API server started on: ' + port);
+
+app.use("/api", apiLimiter, apiRouter);
+
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: `Welcome to the ${Environment.ENVIRONMENT_KEY.toUpperCase()} SwapUp API! Server is running on PORT:${port}`
+  });
+});
+
+app.listen(port, () => {
+  logger.info(`SwapUp RESTful API ${Environment.ENVIRONMENT_KEY} server started on PORT:${port}`);
+});
+
+app.use((req, res, next) => {
+  try {
+    throw new CustomError(404, "Route does not exist");
+  } catch (error) {
+    handleError(res, error, "***not_found error");
+  }
+});
+
+// // Handle uncaught errors (optional but useful for catching runtime errors)
+// app.use((err, req, res, next) => {
+//   logger.error(`Uncaught Error - ${req.method} ${req.url} - ${err.message}`);
+//   handleError(res, err, "Unexpected error occurred");
+// });

@@ -1,16 +1,19 @@
+import Environment from '../../config';
 import db from '../../database/models';
+import { handleError } from '../../errors';
+import logger from '../../logger';
 import { tryParseJSON } from '../utils/helpers';
 
 const { TwitterApi } = require('twitter-api-v2');
 const puppeteer = require('puppeteer');
 
 const swapUpTwitterClient = new TwitterApi({
-   appKey: process.env.TWITTER_API_KEY,
-   appSecret: process.env.TWITTER_API_SECRET_KEY,
-   accessToken: process.env.TWITTER_ACCESS_TOKEN,
-   accessSecret: process.env.TWITTER_ACCESS_SECRET,
-   clientId: process.env.TWITTER_CLIENT_ID,
-   clientSecret: process.env.TWITTER_CLIENT_SECRET,
+   appKey: Environment.TWITTER_API_KEY,
+   appSecret: Environment.TWITTER_API_SECRET_KEY,
+   accessToken: Environment.TWITTER_ACCESS_TOKEN,
+   accessSecret: Environment.TWITTER_ACCESS_SECRET,
+   clientId: Environment.TWITTER_CLIENT_ID,
+   clientSecret: Environment.TWITTER_CLIENT_SECRET,
 });
 
 async function test_image_creation_and_deletion(req, res) {
@@ -97,11 +100,7 @@ async function test_image_creation_and_deletion(req, res) {
 
       res.status(201).json(tweetResponse);
    } catch (err) {
-      console.log(err);
-      res.status(500).json({
-         success: false,
-         message: `***test_image_creation_and_deletion error -> ${err}`
-      });
+      handleError(res, err, "***test_image_creation_and_deletion error");
    }
 }
 
@@ -110,8 +109,8 @@ async function exchange_code_for_access_token(req, res) {
 
    try {
       const newTwitterClient = new TwitterApi({
-         clientId: process.env.TWITTER_CLIENT_ID,
-         clientSecret: process.env.TWITTER_CLIENT_SECRET
+         clientId: Environment.TWITTER_CLIENT_ID,
+         clientSecret: Environment.TWITTER_CLIENT_SECRET
       });
 
       // Exchange the authorization code for access token
@@ -154,8 +153,7 @@ async function exchange_code_for_access_token(req, res) {
          res.status(500).json({ error: 'Failed to update user access information' });
       }
    } catch (err) {
-      console.error('Error exchanging code for access token:', err);
-      res.status(500).json({ error: 'Failed to exchange code for access token' });
+      handleError(res, err, "***exchange_code_for_access_token error");
    }
 }
 
@@ -229,11 +227,7 @@ async function upload_image_to_twitter(req, res) {
 
       res.status(201).json(tweetResponse);
    } catch (err) {
-      console.error('Error uploading image to Twitter:', err.response ? err.response.data : err.message);
-      res.status(500).json({
-         success: false,
-         message: `***upload_image_to_twitter error -> ${err.message}`
-      });
+      handleError(res, err, "***upload_image_to_twitter error error");
    }
 }
 
@@ -244,16 +238,14 @@ async function get_refreshed_twitter_client(refreshToken) {
 
    try {
       const newTwitterClient = new TwitterApi({
-         clientId: process.env.TWITTER_CLIENT_ID,
-         clientSecret: process.env.TWITTER_CLIENT_SECRET
+         clientId: Environment.TWITTER_CLIENT_ID,
+         clientSecret: Environment.TWITTER_CLIENT_SECRET
       });
 
       const { client: refreshedClient } = await newTwitterClient.refreshOAuth2Token(refreshToken);
-
       return refreshedClient;
 
    } catch (err) {
-      console.error('Error while refreshing token:', err);
       throw new Error('Failed to refresh access token');
    }
 }
@@ -444,7 +436,7 @@ const getBufferFromHTMLString = async (htmlString) => {
       await new Promise(resolve => setTimeout(resolve, 10000));
 
       // const pageContent = await page.content();
-      // console.log("Content: ==> ", pageContent);
+      // logger.info("Content: ==> ", pageContent);
 
       // Capture a screenshot of the entire page
       const buffer = await page.screenshot({
@@ -455,7 +447,7 @@ const getBufferFromHTMLString = async (htmlString) => {
       await browser.close();
 
       // Log the buffer size
-      console.log("Buffer Size:", Buffer.byteLength(buffer), "bytes");
+      logger.info("Buffer Size:", Buffer.byteLength(buffer), "bytes");
 
       return Buffer.from(buffer);
    } catch (error) {

@@ -2,14 +2,16 @@
 import db from "../../database/models";
 import { Op } from "sequelize";
 import { OfferType, SwapMode, SwapStatus } from '../utils/constants.js';
-import { handleError, tryParseJSON } from "../utils/helpers";
+import { tryParseJSON } from "../utils/helpers";
 import { updateUserTagsIfFirstTrade } from "../utils/userTagsUpdater";
+import logger from "../../logger";
+import { handleError } from "../../errors";
 
 const createOpenSwap = async (req, res) => {
     try {
         const metadata = req.body.metadata;
         const swap_preferences = req.body.swap_preferences;
-        console.log(metadata);
+        logger.info(metadata);
         const response = await db.swaps.create({
             metadata: JSON.stringify(metadata),
             init_address: req.body.init_address.trim(),
