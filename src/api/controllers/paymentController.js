@@ -37,6 +37,9 @@ async function payment_success_webhook(req, res) {
 
     const paymentData = requestData.buyWithCryptoStatus || requestData.buyWithFiatStatus;
 
+    let paymentRecordSavedResponse = null;
+    let customMessage = '';
+
     // Hint: Visit the following links to view types
     // BuyWithCryptoStatus: https://portal.thirdweb.com/references/typescript/v5/BuyWithCryptoStatus
     // BuyWithFiatStatus: https://portal.thirdweb.com/references/typescript/v5/BuyWithFiatStatus
@@ -45,8 +48,21 @@ async function payment_success_webhook(req, res) {
       throw new CustomError(202, "Transaction is not completed yet!");
     }
 
-    let paymentRecordSavedResponse = null;
-    let customMessage = '';
+    const { environmentId, environmentKey } = paymentData.purchaseData.paymentTriggeredFrom;
+
+    //Same Environment - check if payment triggered from same environment, if not then return res with message
+    if ((Environment.NETWORK_ID !== Number(environmentId)) && (Environment.ENVIRONMENT_KEY !== environmentKey)) {
+      customMessage = `Transaction results triggered from ${environmentKey} environment cannot be saved in ${Environment.ENVIRONMENT_KEY} environment.`;
+
+      logger.warn(customMessage);
+
+      res.status(202).json({
+        success: true,
+        message: customMessage,
+        data: paymentRecordSavedResponse
+      });
+    }
+
 
     // Check for subname payment
     if (paymentData.purchaseData.purchaseType === SUE_PurchaseType.SUBNAME) {
