@@ -7,9 +7,9 @@
     "start:dev": "nodemon --exec babel-node ./src/server.js",
     "build": "npm ci&& babel ./src --out-dir ./dist --source-maps",
     "start": "node ./dist/server.js",
-    "dev": "set NODE_ENV=development&& nodemon --exec babel-node ./src/server.js",
-    "test": "set NODE_ENV=test&& nodemon --exec babel-node ./src/server.js",
-    "prod": "set NODE_ENV=production&& nodemon --exec babel-node ./src/server.js"
+    "dev": "set SWAPUP_ENVIRONMENT_KEY=development&& nodemon --exec babel-node ./src/server.js",
+    "test": "set SWAPUP_ENVIRONMENT_KEY=test&& nodemon --exec babel-node ./src/server.js",
+    "prod": "set SWAPUP_ENVIRONMENT_KEY=production&& nodemon --exec babel-node ./src/server.js"
   },
   "repository": {
     "type": "git",
@@ -39,7 +39,9 @@
     "puppeteer": "^23.3.0",
     "sequelize": "^6.28.0",
     "tedious": "^15.1.2",
-    "twitter-api-v2": "^1.17.2"
+    "twitter-api-v2": "^1.17.2",
+    "winston": "^3.15.0",
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
     "chai": "^4.3.7",

@@ -1,15 +1,16 @@
-import { Op } from "sequelize";
-import { handleError, isExpiredWebhook, isValidWebhookSignature, tryParseJSON } from "../utils/helpers";
-import CustomError from "../../errors/customError";
+import { isExpiredWebhook, isValidWebhookSignature, tryParseJSON } from "../utils/helpers";
 import { SUE_PurchaseType } from "../utils/constants";
 import { checkOffchainSubnameAvailabilityApi, mintOffchainSubnameApi } from "../../service/thirdparty.service";
 import { DTO_MintNewOffchainSubnamePayload } from "../utils/dtos";
 import db from "../../database/models";
+import Environment from "../../config";
+import logger from "../../logger";
+import { CustomError, handleError } from "../../errors";
 
-const WEBHOOK_SECRET = process.env.THIRDWEB_PAYMENT_WEBHOOK_SECRET_KEY;
+const WEBHOOK_SECRET = Environment.THIRDWEB_PAYMENT_WEBHOOK_SECRET_KEY;
 
 function test(req, res) {
-  res.send({ network: process.env.NETWORK });
+  res.send({ network: Environment.NETWORK_ID });
 }
 
 async function payment_success_webhook(req, res) {
@@ -56,9 +57,9 @@ async function payment_success_webhook(req, res) {
       let availabilityResponse;
       try {
         availabilityResponse = await checkOffchainSubnameAvailabilityApi(subnamePurchaseData.subnameLabel, subnamePurchaseData.domain);
-        // console.log("availabilityResponse.data: ", availabilityResponse.data);
+        // logger.info("availabilityResponse.data: ", availabilityResponse.data);
       } catch (error) {
-        console.error("Error checking subname availability: ", error.message);
+        logger.error("Error checking subname availability: ", error.message);
       }
 
       // Step-2: Check the subname availability and if available
@@ -73,10 +74,10 @@ async function payment_success_webhook(req, res) {
         try {
           const mintSubnameResponse = await mintOffchainSubnameApi(mintSubnamePayload);
           if (mintSubnameResponse.data) {
-            console.log("Manual subname minted on behalf of user: ", mintSubnameResponse.data);
+            logger.info("Manual subname minted on behalf of user: ", mintSubnameResponse.data);
           }
         } catch (error) {
-          console.error("Error minting subname: ", error.message);
+          logger.error("Error minting subname: ", error.message);
         }
       }
 
@@ -104,7 +105,7 @@ async function payment_success_webhook(req, res) {
       customMessage = "Unknown purchase type.";
     }
 
-    console.log("paymentRecordSavedResponse: ", paymentRecordSavedResponse);
+    logger.info("paymentRecordSavedResponse: ", paymentRecordSavedResponse);
 
     res.status(paymentRecordSavedResponse !== null ? 201 : 200).json({
       success: true,

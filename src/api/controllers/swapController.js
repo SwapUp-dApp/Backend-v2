@@ -1,12 +1,15 @@
 import db from "../../database/models";
 import { Op } from "sequelize";
 import { OfferType, SwapStatus, SwapMode } from '../utils/constants.js';
-import { handleError, tryParseJSON } from "../utils/helpers";
+import { tryParseJSON } from "../utils/helpers";
 import { updateUserTagsIfFirstTrade } from "../utils/userTagsUpdater";
+import Environment from "../../config";
+import logger from "../../logger";
+import { handleError } from "../../errors";
 
 function test(req, res) {
     //testDb();
-    res.send({ network: process.env.NETWORK });
+    res.send({ network: Environment.NETWORK_ID });
 }
 
 const newSwap = async (req, res) => {
@@ -37,11 +40,7 @@ const newSwap = async (req, res) => {
             });
         }
     } catch (err) {
-        console.log(err);
-        res.status(500).json({
-            success: false,
-            message: `***new_swap error -> ${err}`
-        });
+        handleError(res, err, "***new_swap error error");
     }
 };
 
@@ -70,11 +69,7 @@ const counterSwapOffer = async (req, res) => {
             });
         }
     } catch (err) {
-        console.log(err);
-        res.status(500).json({
-            success: false,
-            message: `***update_swap error -> ${err}`
-        });
+        handleError(res, err, "***update_swap error error");
     }
 };
 
@@ -107,11 +102,7 @@ const updateSwapStatus = async (req, res) => {
             });
         }
     } catch (err) {
-        console.log(err);
-        res.status(500).json({
-            success: false,
-            message: `***update_swap_status -> ${err}`
-        });
+        handleError(res, err, "***update_swap_status error");
     }
 };
 
@@ -232,11 +223,7 @@ const getPrivatePending = async (req, res) => {
             });
         }
     } catch (err) {
-        console.log(err);
-        res.status(500).json({
-            success: false,
-            message: `***get_pending error -> ${err}`
-        });
+        handleError(res, err, "***get_pending error");
     }
 };
 
@@ -261,11 +248,7 @@ const getPending = async (req, res) => {
             });
         }
     } catch (err) {
-        console.log(err);
-        res.status(500).json({
-            success: false,
-            message: `***get_pending error -> ${err}`
-        });
+        handleError(res, err, "***get_pending error");
     }
 };
 
@@ -288,11 +271,7 @@ const history = async (req, res) => {
             });
         }
     } catch (err) {
-        console.log(err);
-        res.status(500).json({
-            success: false,
-            message: `***history error -> ${err}`
-        });
+        handleError(res, err, "***history error");
     }
 };
 
@@ -310,17 +289,13 @@ const sendSign = async (req, res) => {
             });
         }
     } catch (err) {
-        console.log(err);
-        res.status(500).json({
-            success: false,
-            message: `***send_sign error -> ${err}`
-        });
+        handleError(res, err, "***send_sign error");
     }
 };
 
 const getPendingSwaps = async (req, res) => {
     const { address } = req.query;
-    console.log("wallet", address);
+    logger.info("wallet", address);
 
     try {
         const response = await db.swaps.findAll({
@@ -357,11 +332,7 @@ const getPendingSwaps = async (req, res) => {
             });
         }
     } catch (err) {
-        console.log(err);
-        res.status(500).json({
-            success: false,
-            message: `***get_pending error -> ${err}`
-        });
+        handleError(res, err, "***get_pending error");
     }
 };
 
@@ -410,11 +381,7 @@ const getSwapHistory = async (req, res) => {
             });
         }
     } catch (err) {
-        console.log(err);
-        res.status(500).json({
-            success: false,
-            message: `***get__swap_history -> ${err}`
-        });
+        handleError(res, err, "***get__swap_history error");
     }
 };
 

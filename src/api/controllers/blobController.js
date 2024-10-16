@@ -1,12 +1,15 @@
 import { BlobServiceClient } from '@azure/storage-blob';
 import multer from 'multer';
-import { handleError, tryParseJSON } from '../utils/helpers';
+import { tryParseJSON } from '../utils/helpers';
 import db from '../../database/models';
 import { SUE_BlobPictureType } from '../utils/constants';
+import Environment from '../../config';
+import logger from '../../logger';
+import { handleError } from '../../errors';
 
-const sasToken = process.env.AZURE_BLOB_STORAGE_SAS_TOKEN;
-const accountName = process.env.AZURE_BLOB_STORAGE_ACCOUNT_NAME;
-const containerName = process.env.AZURE_BLOB_STORAGE_CONTAINER_NAME;
+const sasToken = Environment.AZURE_BLOB_STORAGE_SAS_TOKEN;
+const accountName = Environment.AZURE_BLOB_STORAGE_ACCOUNT_NAME;
+const containerName = Environment.AZURE_BLOB_STORAGE_CONTAINER_NAME;
 
 const blobServiceClient = new BlobServiceClient(`https://${accountName}.blob.core.windows.net/?${sasToken}`);
 const containerClient = blobServiceClient.getContainerClient(containerName);
@@ -38,7 +41,7 @@ const upload_profile_picture = async (req, res) => {
     const uploadResult = await blockBlobClient.uploadData(req.file.buffer, {
       blobHTTPHeaders: { blobContentType: req.file.mimetype },
     });
-    // console.log("uploadResult: ", uploadResult);
+    // logger.info("uploadResult: ", uploadResult);
 
     // The URL for the uploaded image
     const imageUrl = blockBlobClient.url;
@@ -94,7 +97,7 @@ const delete_profile_picture = async (req, res) => {
 
     // Delete the blob
     const deleteResult = await blockBlobClient.delete();
-    // console.log("delete result: ", deleteResult);
+    // logger.info("delete result: ", deleteResult);
 
     // Parse the existing images column (use tryParseJSON)
     let images = tryParseJSON(user.images);

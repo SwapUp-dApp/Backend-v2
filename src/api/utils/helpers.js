@@ -1,4 +1,6 @@
+import logger from '../../logger';
 const crypto = require('crypto');
+
 // const fs = require('fs');
 // const path = require('path');
 // const util = require('util');
@@ -25,18 +27,6 @@ export function tryParseJSON(jsonString) {
   }
 }
 
-export const handleError = (res, err, message) => {
-  const status = err.status || 500;
-  console.error(`${message} -> ${err.message || err}`);
-
-  res.status(status).json({
-    success: false,
-    message: `${message} -> ${err.message || err}`
-  });
-};
-
-
-
 // Webhook helper functions starts here
 
 export const isExpiredWebhook = (timestamp, expirationInSeconds,) => {
@@ -46,7 +36,7 @@ export const isExpiredWebhook = (timestamp, expirationInSeconds,) => {
 
 export function isValidWebhookSignature(body, timestamp, signature, secret) {
   const dataToSign = `${timestamp}.${JSON.stringify(body)}`;
-  console.log("dataToSign: ", dataToSign);
+  logger.info("dataToSign: ", dataToSign);
 
   // Generate the HMAC SHA-256 signature
   const expectedSignature = crypto
@@ -54,7 +44,7 @@ export function isValidWebhookSignature(body, timestamp, signature, secret) {
     .update(dataToSign)
     .digest('hex');
 
-  console.log('expectedSignature: ', expectedSignature);
+  logger.info('expectedSignature: ', expectedSignature);
 
   return crypto.timingSafeEqual(
     Buffer.from(expectedSignature),

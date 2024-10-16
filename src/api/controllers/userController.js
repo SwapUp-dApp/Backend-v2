@@ -1,5 +1,8 @@
+import Environment from "../../config";
 import db from "../../database/models";
-import { handleError, tryParseJSON } from "../utils/helpers";
+import { handleError } from "../../errors";
+import logger from "../../logger";
+import { tryParseJSON } from "../utils/helpers";
 
 async function list_all_users(req, res) {
   try {
@@ -13,11 +16,7 @@ async function list_all_users(req, res) {
       });
     }
   } catch (err) {
-    console.log(err);
-    res.status(500).json({
-      success: false,
-      message: `***list_all_users -> ${err}`
-    });
+    handleError(res, err, "***list_all_users: error");
   }
 }
 async function create_user(req, res) {
@@ -43,7 +42,7 @@ async function create_user(req, res) {
     const formattedUser = getFormattedUserDetails(restUserData);
 
     if (created) {
-      console.log("Created user: ", formattedUser);
+      logger.info("Created user: ", formattedUser);
 
       return res.status(201).json({
         success: true,
@@ -210,7 +209,7 @@ async function edit_user_profile(req, res) {
   }
 }
 function test(req, res) {
-  res.send({ network: process.env.NETWORK, message: "SwapUp user test route" });
+  res.send({ network: Environment.NETWORK_ID, message: "SwapUp user test route" });
 }
 
 // Helper functions

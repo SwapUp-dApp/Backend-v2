@@ -1,20 +1,15 @@
 import axios from 'axios';
+import Environment from '../config';
 
 
 const namespaceOffchainApi = axios.create({
-  baseURL: process.env.NAMESPACE_OFFCHAIN_API_BASE_URL,
-  headers: { "Content-Type": "application/json", "Authorization": `Bearer ${process.env.NAMESPACE_API_KEY}` },
+  baseURL: Environment.NAMESPACE_OFFCHAIN_API_BASE_URL,
+  headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Environment.NAMESPACE_API_KEY}` },
 });
 
 namespaceOffchainApi.interceptors.response.use(
   response => response,
-  error => {
-    console.log(
-      "Error in Response Interceptor:",
-      JSON.stringify(error?.response || error?.message),
-    );
-    return Promise.reject(error);
-  }
+  error => Promise.reject(error)
 );
 
 export const mintOffchainSubnameApi = (mintParams) => {
