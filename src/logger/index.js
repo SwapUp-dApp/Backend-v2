@@ -13,7 +13,8 @@ const transport = new winston.transports.DailyRotateFile({
 
 // Set up the logger
 const logger = winston.createLogger({
-  level: Environment.ENVIRONMENT_KEY === 'production' ? 'error' : 'info',
+  // level: Environment.ENVIRONMENT_KEY === 'production' ? 'error' : 'info', // If we want to show only error logs in production
+  level: 'info',
   format: winston.format.combine(
     winston.format.timestamp({
       format: 'YYYY-MM-DD HH:mm:ss',

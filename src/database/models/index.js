@@ -32,9 +32,9 @@ let sequelize = new Sequelize({
 
 try {
     sequelize.authenticate();
-    logger.info('Connection has been established successfully.');
+    logger.info('sequelize --> Connection has been established successfully.');
 } catch (error) {
-    logger.error(`Unable to connect to the database: ${error.message}`);
+    logger.error(`sequelize --> Unable to connect to the database: ${error.message}`);
 }
 
 

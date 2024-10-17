@@ -58,7 +58,7 @@ app.use("/api", apiLimiter, apiRouter);
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
-    message: `Welcome to the ${Environment.ENVIRONMENT_KEY.toUpperCase()} SwapUp API! Server is running on PORT:${port}`
+    message: `Welcome!, The '${Environment.ENVIRONMENT_KEY.toUpperCase()}' SwapUp API Server is running on PORT:${port}`
   });
 });
 
