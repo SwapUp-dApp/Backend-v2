@@ -13,4 +13,5 @@ userRouter
   .post('/upload-profile-picture', blobController.upload_middleware, blobController.upload_profile_picture)
   .patch('/delete-profile-picture', blobController.delete_profile_picture)
   .patch('/update-points/:walletId', userController.update_user_points)
-  .patch('/updated-profile-details/:walletId', userController.edit_user_profile);
+  .patch('/updated-profile-details/:walletId', userController.edit_user_profile)
+  .post('/transfer-tokens', userController.transfer_tokens);

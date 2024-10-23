@@ -3,5 +3,6 @@
   "migration-new-two.js",
   "20240910104139-add-profile-columns-user.js",
   "20240930115440-update-points-column-type.js",
-  "20241014085150-create-payments.js"
+  "20241014085150-create-payments.js",
+  "20241023083143-add-smartAccount-privateKey-to-user.js"
 ]

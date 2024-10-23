@@ -3,6 +3,14 @@ import db from "../../database/models";
 import { handleError } from "../../errors";
 import logger from "../../logger";
 import { tryParseJSON } from "../utils/helpers";
+import { Wallet } from "ethers";
+
+
+import { smartWallet, privateKeyToAccount } from "thirdweb/wallets";
+import { addAdmin } from "thirdweb/extensions/erc4337";
+import { sendTransaction, getContract } from "thirdweb";
+import { currentChain, thirdWebClient } from "../../utils/thirdwebHelpers";
+import { transfer } from "thirdweb/extensions/erc20";
 
 async function list_all_users(req, res) {
   try {
@@ -39,16 +47,95 @@ async function create_user(req, res) {
 
     // Format the user object before sending the response, excluding twitter_access
     const { twitter_access, ...restUserData } = user.dataValues;
-    const formattedUser = getFormattedUserDetails(restUserData);
+    let formattedUser = getFormattedUserDetails(restUserData);
 
     if (created) {
       logger.info("Created user: ", formattedUser);
+      const generatedPrivateKey = Wallet.createRandom().privateKey;
+      logger.info(`Generated Private Key: ${generatedPrivateKey}`);
+
+      const personalAccount = privateKeyToAccount({
+        client: thirdWebClient,
+        privateKey: generatedPrivateKey
+      });
+
+      logger.info("Personal account:", personalAccount);
+      // Configure the smart wallet
+      const newSmartWallet = smartWallet({
+        chain: currentChain,
+        sponsorGas: true,
+      });
+
+      logger.info("newSmartWallet: ", newSmartWallet);
+
+      // Connect the smart wallet
+      const smartAccount = await newSmartWallet.connect({
+        client: thirdWebClient,
+        personalAccount,
+      });
+
+      logger.info("smartAccount: ", smartAccount);
+
+      // Define admin addresses to be added
+      const adminAddresses = [walletId, Environment.SWAPUP_TREASURY_WALLET]; // User's walletId and Swapup treasury wallet
+
+      try {
+        // Function to add an admin to the smart wallet
+        const addAdminToSmartWallet = async (adminAddress) => {
+          const adminTransaction = addAdmin({
+            contract: getContract({
+              address: smartAccount.address,
+              client: thirdWebClient,
+              chain: currentChain,
+            }),
+            account: smartAccount,
+            adminAddress,
+          });
+
+          // logger.info(`Adding admin: ${adminAddress}`, adminTransaction);
+
+          return await sendTransaction({
+            transaction: adminTransaction,
+            account: smartAccount,
+          });
+        };
+
+        // Add admin accounts
+        if (walletId === Environment.SWAPUP_TREASURY_WALLET) {
+          const result = await addAdminToSmartWallet(walletId);
+          logger.info(`Admin ${walletId} added: `, result);
+        } else {
+          for (const adminAddress of adminAddresses) {
+            const result = await addAdminToSmartWallet(adminAddress);
+            logger.info(`Admin ${adminAddress} added: `, result);
+          }
+        }
+      } catch (error) {
+        logger.error(`Admin not added: ${error.message || error}`);
+      }
+
+      let updatedUser = null;
+
+      // Update the user record with the generated private key and smart account address
+      if (generatedPrivateKey && smartAccount.address) {
+        updatedUser = await user.update({
+          privateKey: generatedPrivateKey,
+          smartAccount: smartAccount.address,
+        });
+      }
+
+      // Reformat the updated user data
+      if (updatedUser !== null) {
+        const { twitter_access, ...updatedUserData } = updatedUser.dataValues;
+        formattedUser = getFormattedUserDetails(updatedUserData);
+      }
 
       return res.status(201).json({
         success: true,
         message: `User with wallet ID ${walletId} created successfully.`,
         data: formattedUser
       });
+
     } else {
       return res.status(200).json({
         success: true,
@@ -60,6 +147,68 @@ async function create_user(req, res) {
     handleError(res, err, "create_user: error");
   }
 }
+
+async function transfer_tokens(req, res) {
+  try {
+    const adminWallet = Environment.SWAPUP_TREASURY_WALLET;
+    const { amountToTransfer, tokenAddress, smartAccountPrivateKey } = req.body;
+
+    // Create a wallet from the private key
+    const personalAccount = privateKeyToAccount({
+      client: thirdWebClient,
+      privateKey: smartAccountPrivateKey,
+    });
+
+    // Reconnect to the smart wallet (for the smart account)
+    const createdSmartWallet = smartWallet({
+      chain: currentChain,
+      sponsorGas: true,
+    });
+
+    // Connect to the smart account
+    const smartAccount = await createdSmartWallet.connect({
+      client: thirdWebClient,
+      personalAccount,
+    });
+
+    // Retrieve the ERC-20 token contract
+    const tokenContract = getContract({
+      address: tokenAddress,
+      client: thirdWebClient,
+      chain: currentChain,
+    });
+
+    // Check if the token contract was initialized correctly
+    if (!tokenContract) {
+      throw new Error("Token contract could not be initialized.");
+    }
+
+    // Call the extension function to prepare the transaction
+    const transaction = transfer({
+      contract: tokenContract,
+      to: adminWallet,
+      amount: amountToTransfer,
+    });
+
+    // Send the transfer transaction from the smart account
+    const transferResult = await sendTransaction({
+      transaction,
+      account: smartAccount,
+    });
+
+    // Log the transaction and respond with success
+    logger.info(`Tokens transferred to ${adminWallet}`, transferResult);
+    return res.status(201).json({
+      success: true,
+      message: `Successfully transferred ${amountToTransfer} tokens to ${adminWallet}`,
+      transaction: transferResult,
+    });
+  } catch (err) {
+    handleError(res, err, "transfer_tokens: error");
+  }
+}
+
+
 
 async function get_user_twitter_access_by_wallet(req, res) {
   const walletId = req.params.walletId;
@@ -263,5 +412,6 @@ export const userController = {
   get_user_twitter_access_by_wallet,
   update_user_points,
   get_user_by_wallet,
-  edit_user_profile
+  edit_user_profile,
+  transfer_tokens
 };
