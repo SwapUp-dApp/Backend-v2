@@ -31,4 +31,5 @@ export const SUE_ProfileTags = {
 export const SUE_PurchaseType = {
     CRYPTO: 1,
     SUBNAME: 2,
+    SUBSCRIPTION: 3
 };
