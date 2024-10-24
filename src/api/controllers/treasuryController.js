@@ -8,6 +8,8 @@ import { sendTransaction, getContract } from "thirdweb";
 import { currentChain, thirdWebClient } from "../../utils/thirdwebHelpers";
 import { transfer } from "thirdweb/extensions/erc20";
 
+
+// To transfer ERC20 Tokens from swapup treasury smart account --> users smart account
 async function transfer_erc20_tokens(req, res) {
   try {
     const { amountToTransfer, tokenAddress, transferToAddress } = req.body;

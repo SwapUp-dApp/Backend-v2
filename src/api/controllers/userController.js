@@ -3,9 +3,9 @@ import db from "../../database/models";
 import { handleError } from "../../errors";
 import logger from "../../logger";
 import { tryParseJSON } from "../utils/helpers";
+
+
 import { Wallet } from "ethers";
-
-
 import { smartWallet, privateKeyToAccount } from "thirdweb/wallets";
 import { addAdmin } from "thirdweb/extensions/erc4337";
 import { sendTransaction, getContract } from "thirdweb";
@@ -56,44 +56,6 @@ async function create_user(req, res) {
       const smartAccount = await createOrGetSmartAccount(walletId);
       logger.info("smartAccount: ", smartAccount);
 
-      // Define admin addresses to be added
-      const adminAddresses = [walletId, Environment.SWAPUP_TREASURY_SMART_ACCOUNT]; // User's walletId and Swapup treasury wallet
-
-      // Adding admins to the smart wallet
-      try {
-        const addAdminToSmartWallet = async (adminAddress) => {
-          const adminTransaction = addAdmin({
-            contract: getContract({
-              address: smartAccount.address,
-              client: thirdWebClient,
-              chain: currentChain,
-            }),
-            account: smartAccount,
-            adminAddress,
-          });
-
-          // logger.info(`Adding admin: ${adminAddress}`, adminTransaction);
-
-          return await sendTransaction({
-            transaction: adminTransaction,
-            account: smartAccount,
-          });
-        };
-
-        // Add admin accounts
-        if (walletId === Environment.SWAPUP_TREASURY_SMART_ACCOUNT) {
-          const result = await addAdminToSmartWallet(walletId);
-          logger.info(`Admin ${walletId} added: `, result);
-        } else {
-          for (const adminAddress of adminAddresses) {
-            const result = await addAdminToSmartWallet(adminAddress);
-            logger.info(`Admin ${adminAddress} added: `, result);
-          }
-        }
-      } catch (error) {
-        logger.error(`Admin not added: ${error.message || error}`);
-      }
-
       return res.status(201).json({
         success: true,
         message: `User with wallet ID ${walletId} created successfully.`,
@@ -112,6 +74,7 @@ async function create_user(req, res) {
   }
 }
 
+// To transfer ERC20 Tokens from users smart account --> swapup treasury smart account
 async function transfer_erc20_tokens(req, res) {
   try {
     const userWalletId = req.params.userWalletId;
@@ -307,11 +270,8 @@ async function edit_user_profile(req, res) {
   }
 }
 
-function test(req, res) {
-  res.send({ network: Environment.NETWORK_ID, message: "SwapUp user test route" });
-}
 
-// Helper functions
+// Helper functions - start here
 
 // For creating new or getting smart wallet details from db
 async function createOrGetSmartAccount(walletId) {
@@ -369,10 +329,50 @@ async function createOrGetSmartAccount(walletId) {
   });
 
   // Save the new smart account and private key to the user's record
-  await user.update({
-    privateKey: generatedPrivateKey,
-    smartAccount: smartAccount.address,
-  });
+  if (smartAccount.address && generatedPrivateKey) {
+    await user.update({
+      privateKey: generatedPrivateKey,
+      smartAccount: smartAccount.address,
+    });
+  }
+
+  // Define admin addresses to be added
+  const adminAddresses = [walletId, Environment.SWAPUP_TREASURY_SMART_ACCOUNT]; // User's walletId and Swapup treasury wallet
+
+  // Adding admins to the smart wallet
+  try {
+    const addAdminToSmartWallet = async (adminAddress) => {
+      const adminTransaction = addAdmin({
+        contract: getContract({
+          address: smartAccount.address,
+          client: thirdWebClient,
+          chain: currentChain,
+        }),
+        account: smartAccount,
+        adminAddress,
+      });
+
+      // logger.info(`Adding admin: ${adminAddress}`, adminTransaction);
+
+      return await sendTransaction({
+        transaction: adminTransaction,
+        account: smartAccount,
+      });
+    };
+
+    // Add admin accounts
+    if (walletId === Environment.SWAPUP_TREASURY_SMART_ACCOUNT) {
+      const result = await addAdminToSmartWallet(walletId);
+      logger.info(`Admin ${walletId} added: `, result);
+    } else {
+      for (const adminAddress of adminAddresses) {
+        const result = await addAdminToSmartWallet(adminAddress);
+        logger.info(`Admin ${adminAddress} added: `, result);
+      }
+    }
+  } catch (error) {
+    logger.error(`Admin not added: ${error.message || error}`);
+  }
 
   return smartAccount; // Return the newly connected smart account
 }

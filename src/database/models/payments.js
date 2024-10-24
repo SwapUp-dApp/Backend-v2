@@ -33,6 +33,10 @@ module.exports = (sequelize) => {
         type: DataTypes.TEXT,
         allowNull: true,
       },
+      subscriptionPurchase: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      }
     },
     {
       sequelize,
