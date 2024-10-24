@@ -64,7 +64,7 @@ async function payment_success_webhook(req, res) {
     }
 
 
-    // Check for subname payment
+    // 1. Check for subname payment
     if (paymentData.purchaseData.purchaseType === SUE_PurchaseType.SUBNAME) {
       const subnamePurchaseData = paymentData.purchaseData.details.subname;
 
@@ -105,9 +105,9 @@ async function payment_success_webhook(req, res) {
 
       customMessage = "Subname purchase data saved.";
     }
-    // Check for crypto payment
-    else if (paymentData.purchaseData.purchaseType === SUE_PurchaseType.CRYPTO) {
 
+    // 2. Check for crypto payment
+    else if (paymentData.purchaseData.purchaseType === SUE_PurchaseType.CRYPTO) {
       // Create new record in Payments table with data in cryptoPurchase column
       paymentRecordSavedResponse = await db.payments.create({
         paidBy: paymentData.fromAddress,
@@ -115,8 +115,20 @@ async function payment_success_webhook(req, res) {
       });
 
       customMessage = "Crypto purchase data saved.";
+    }
 
-    } else {
+    // 3. Check for crypto payment
+    else if (paymentData.purchaseData.purchaseType === SUE_PurchaseType.SUBSCRIPTION) {
+      // Create new record in Payments table with data in subscriptionPurchase column
+      paymentRecordSavedResponse = await db.payments.create({
+        paidBy: paymentData.fromAddress,
+        subscriptionPurchase: JSON.stringify(paymentData)
+      });
+
+      customMessage = "Subscription purchase data saved.";
+    }
+
+    else {
       paymentRecordSavedResponse = null;
       customMessage = "Unknown purchase type.";
     }
