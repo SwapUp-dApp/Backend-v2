@@ -21,7 +21,9 @@ module.exports = (sequelize, DataTypes) => {
             title: DataTypes.STRING,
             description: DataTypes.TEXT,
             social_links: DataTypes.TEXT,
-            tags: DataTypes.TEXT
+            tags: DataTypes.TEXT,
+            privateKey: DataTypes.TEXT,
+            smartAccount: DataTypes.TEXT
         },
         {
             sequelize,

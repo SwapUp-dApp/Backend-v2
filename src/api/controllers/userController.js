@@ -4,6 +4,14 @@ import { handleError } from "../../errors";
 import logger from "../../logger";
 import { tryParseJSON } from "../utils/helpers";
 
+
+import { Wallet } from "ethers";
+import { smartWallet, privateKeyToAccount } from "thirdweb/wallets";
+import { addAdmin } from "thirdweb/extensions/erc4337";
+import { sendTransaction, getContract } from "thirdweb";
+import { currentChain, thirdWebClient } from "../../utils/thirdwebHelpers";
+import { transfer } from "thirdweb/extensions/erc20";
+
 async function list_all_users(req, res) {
   try {
     let usersData = await db.users.findAll(req.body);
@@ -19,6 +27,7 @@ async function list_all_users(req, res) {
     handleError(res, err, "***list_all_users: error");
   }
 }
+
 async function create_user(req, res) {
   try {
     const walletId = req.params.walletId;
@@ -39,16 +48,20 @@ async function create_user(req, res) {
 
     // Format the user object before sending the response, excluding twitter_access
     const { twitter_access, ...restUserData } = user.dataValues;
-    const formattedUser = getFormattedUserDetails(restUserData);
+    let formattedUser = getFormattedUserDetails(restUserData);
 
     if (created) {
       logger.info("Created user: ", formattedUser);
+
+      const smartAccount = await createOrGetSmartAccount(walletId);
+      logger.info("smartAccount: ", smartAccount);
 
       return res.status(201).json({
         success: true,
         message: `User with wallet ID ${walletId} created successfully.`,
         data: formattedUser
       });
+
     } else {
       return res.status(200).json({
         success: true,
@@ -58,6 +71,54 @@ async function create_user(req, res) {
     }
   } catch (err) {
     handleError(res, err, "create_user: error");
+  }
+}
+
+// To transfer ERC20 Tokens from users smart account --> swapup treasury smart account
+async function transfer_erc20_tokens(req, res) {
+  try {
+    const userWalletId = req.params.userWalletId;
+    const { amountToTransfer, tokenAddress } = req.body;
+
+    const { SWAPUP_TREASURY_SMART_ACCOUNT } = Environment;
+
+    const smartAccount = await createOrGetSmartAccount(userWalletId);
+
+    // Retrieve the ERC-20 token contract
+    const tokenContract = getContract({
+      address: tokenAddress,
+      client: thirdWebClient,
+      chain: currentChain,
+    });
+
+    // Check if the token contract was initialized correctly
+    if (!tokenContract) {
+      throw new Error("Token contract could not be initialized.");
+    }
+
+    // Call the extension function to prepare the transaction
+    const transaction = transfer({
+      contract: tokenContract,
+      to: SWAPUP_TREASURY_SMART_ACCOUNT,
+      amount: amountToTransfer,
+    });
+
+    // Send the transfer transaction from the smart account
+    const transferResult = await sendTransaction({
+      transaction,
+      account: smartAccount,
+    });
+
+    // Log the transaction and respond with success
+    logger.info(`Tokens transferred to ${SWAPUP_TREASURY_SMART_ACCOUNT}`, transferResult);
+
+    return res.status(201).json({
+      success: true,
+      message: `Successfully transferred ${amountToTransfer} tokens to ${SWAPUP_TREASURY_SMART_ACCOUNT}`,
+      transaction: transferResult,
+    });
+  } catch (err) {
+    handleError(res, err, "transfer_tokens: error");
   }
 }
 
@@ -208,11 +269,145 @@ async function edit_user_profile(req, res) {
     handleError(res, err, "edit_user_profile: error");
   }
 }
-function test(req, res) {
-  res.send({ network: Environment.NETWORK_ID, message: "SwapUp user test route" });
+
+async function test_aa_address_using_key(req, res) {
+  try {
+    let personalAccount, newSmartWallet, smartAccount;
+    personalAccount = privateKeyToAccount({
+      client: thirdWebClient,
+      privateKey: "0x98aa2903f8ec54660124972d8c693fadd7d3d4d01189354cc1a62f31d16c72e7",
+    });
+
+    // Configure the new smart wallet
+    newSmartWallet = smartWallet({
+      chain: currentChain,
+      sponsorGas: true,
+    });
+
+    // Connect to the new smart account
+    smartAccount = await newSmartWallet.connect({
+      client: thirdWebClient,
+      personalAccount,
+    });
+
+    logger.info("smart account address: ", smartAccount.address);
+
+    // Send the formatted user data
+    return res.status(200).json({
+      success: true,
+      data: { smartAccount: smartAccount.address, personalAccount: personalAccount.address }
+    });
+
+  } catch (err) {
+    handleError(res, err, "test_aa_address_using_key: error");
+  }
 }
 
-// Helper functions
+// Helper functions - start here
+
+// For creating new or getting smart wallet details from db
+async function createOrGetSmartAccount(walletId) {
+  // Find the user based on the wallet ID
+  const user = await db.users.findOne({
+    where: { wallet: walletId }
+  });
+
+  if (!user) {
+    throw new Error(`User with wallet ID ${walletId} not found.`);
+  }
+
+  let personalAccount, newSmartWallet, smartAccount;
+
+  // Check if the smart account already exists in the user's data
+  if (user.smartAccount && user.privateKey) {
+    // Create personal account with the existing private key
+    personalAccount = privateKeyToAccount({
+      client: thirdWebClient,
+      privateKey: user.privateKey,
+    });
+
+    // Create a new smart wallet
+    newSmartWallet = smartWallet({
+      chain: currentChain,
+      sponsorGas: true,
+    });
+
+    // Connect to the existing smart account
+    smartAccount = await newSmartWallet.connect({
+      client: thirdWebClient,
+      personalAccount,
+    });
+
+    return smartAccount; // Return the connected smart account
+  }
+
+  // If no smart account exists, create a new one
+  const generatedPrivateKey = Wallet.createRandom().privateKey;
+  personalAccount = privateKeyToAccount({
+    client: thirdWebClient,
+    privateKey: generatedPrivateKey,
+  });
+
+  // Configure the new smart wallet
+  newSmartWallet = smartWallet({
+    chain: currentChain,
+    sponsorGas: true,
+  });
+
+  // Connect to the new smart account
+  smartAccount = await newSmartWallet.connect({
+    client: thirdWebClient,
+    personalAccount,
+  });
+
+  // Save the new smart account and private key to the user's record
+  if (smartAccount.address && generatedPrivateKey) {
+    await user.update({
+      privateKey: generatedPrivateKey,
+      smartAccount: smartAccount.address,
+    });
+  }
+
+  // Define admin addresses to be added
+  const adminAddresses = [walletId, Environment.SWAPUP_TREASURY_SMART_ACCOUNT]; // User's walletId and Swapup treasury wallet
+
+  // Adding admins to the smart wallet
+  try {
+    const addAdminToSmartWallet = async (adminAddress) => {
+      const adminTransaction = addAdmin({
+        contract: getContract({
+          address: smartAccount.address,
+          client: thirdWebClient,
+          chain: currentChain,
+        }),
+        account: smartAccount,
+        adminAddress,
+      });
+
+      // logger.info(`Adding admin: ${adminAddress}`, adminTransaction);
+
+      return await sendTransaction({
+        transaction: adminTransaction,
+        account: smartAccount,
+      });
+    };
+
+    // Add admin accounts
+    if (walletId === Environment.SWAPUP_TREASURY_SMART_ACCOUNT) {
+      const result = await addAdminToSmartWallet(walletId);
+      logger.info(`Admin ${walletId} added: `, result);
+    } else {
+      for (const adminAddress of adminAddresses) {
+        const result = await addAdminToSmartWallet(adminAddress);
+        logger.info(`Admin ${adminAddress} added: `, result);
+      }
+    }
+  } catch (error) {
+    logger.error(`Admin not added: ${error.message || error}`);
+  }
+
+  return smartAccount; // Return the newly connected smart account
+}
 
 async function updateUserPointsByWallet(walletId, pointsToAdd, keyType, defaultPointSystem) {
   // Fetch the user by walletId
@@ -255,13 +450,13 @@ const getFormattedUserDetails = (restUserData) => {
   });
 };
 
-
-
 export const userController = {
   list_all_users,
   create_user,
   get_user_twitter_access_by_wallet,
   update_user_points,
   get_user_by_wallet,
-  edit_user_profile
+  edit_user_profile,
+  transfer_erc20_tokens,
+  test_aa_address_using_key
 };

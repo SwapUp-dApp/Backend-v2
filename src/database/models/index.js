@@ -1,17 +1,17 @@
 import Sequelize from "sequelize";
-import databaseConfiguration from "../db.config.js";
-import Environment from "../../config";
 import logger from "../../logger/index.js";
+import dbConfig from "../config.js";
+require("dotenv").config();
 
-
+const databaseConfiguration = dbConfig;
 const db = {};
 
 let sequelize = new Sequelize({
-    database: Environment.DB_NAME,
-    username: Environment.DB_USER,
-    password: Environment.DB_PWD,
-    port: Environment.DB_PORT,
-    host: Environment.DB_HOST, //tcp:swapup-dev.database.windows.net,1433
+    database: databaseConfiguration.database,
+    username: databaseConfiguration.username,
+    password: databaseConfiguration.password,
+    port: databaseConfiguration.port || 1433,
+    host: databaseConfiguration.host, //tcp:swapup-dev.database.windows.net,1433
     dialect: databaseConfiguration.dialect || "mssql",
     encrypt: true,
     dialectOptions: {
