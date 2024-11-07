@@ -47,7 +47,7 @@ async function create_user(req, res) {
     });
 
     // Format the user object before sending the response, excluding twitter_access
-    const { twitter_access, privateKey, ...restUserData } = user.dataValues;
+    const { twitter_access, ...restUserData } = user.dataValues;
     let formattedUser = getFormattedUserDetails(restUserData);
 
     if (created) {
@@ -212,7 +212,7 @@ async function get_user_by_wallet(req, res) {
     }
 
     // Format the user object before sending the response, excluding twitter_access
-    const { twitter_access, privateKey, ...restUserData } = user.dataValues;
+    const { twitter_access, ...restUserData } = user.dataValues;
     const formattedUser = getFormattedUserDetails(restUserData);
 
     // Send the formatted user data
@@ -257,7 +257,7 @@ async function edit_user_profile(req, res) {
     await user.save();
 
     // Format the user object for response, excluding twitter_access
-    const { twitter_access, privateKey, ...restUserData } = user.dataValues;
+    const { twitter_access, ...restUserData } = user.dataValues;
     const formattedUser = getFormattedUserDetails(restUserData);
 
     return res.status(200).json({
@@ -270,6 +270,38 @@ async function edit_user_profile(req, res) {
   }
 }
 
+async function test_aa_address_using_key(req, res) {
+  try {
+    let personalAccount, newSmartWallet, smartAccount;
+    personalAccount = privateKeyToAccount({
+      client: thirdWebClient,
+      privateKey: "0x98aa2903f8ec54660124972d8c693fadd7d3d4d01189354cc1a62f31d16c72e7",
+    });
+
+    // Configure the new smart wallet
+    newSmartWallet = smartWallet({
+      chain: currentChain,
+      sponsorGas: true,
+    });
+
+    // Connect to the new smart account
+    smartAccount = await newSmartWallet.connect({
+      client: thirdWebClient,
+      personalAccount,
+    });
+
+    logger.info("smart account address: ", smartAccount.address);
+
+    // Send the formatted user data
+    return res.status(200).json({
+      success: true,
+      data: { smartAccount: smartAccount.address, personalAccount: personalAccount.address }
+    });
+
+  } catch (err) {
+    handleError(res, err, "test_aa_address_using_key: error");
+  }
+}
 
 // Helper functions - start here
 
@@ -425,5 +457,6 @@ export const userController = {
   update_user_points,
   get_user_by_wallet,
   edit_user_profile,
-  transfer_erc20_tokens
+  transfer_erc20_tokens,
+  test_aa_address_using_key
 };

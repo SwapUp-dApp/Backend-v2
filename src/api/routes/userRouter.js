@@ -14,4 +14,5 @@ userRouter
   .patch('/delete-profile-picture', blobController.delete_profile_picture)
   .patch('/update-points/:walletId', userController.update_user_points)
   .patch('/updated-profile-details/:walletId', userController.edit_user_profile)
-  .post('/:userWalletId/transfer/erc20', userController.transfer_erc20_tokens);
+  .post('/:userWalletId/transfer/erc20', userController.transfer_erc20_tokens)
+  .get(`/test/aa`, userController.test_aa_address_using_key);
