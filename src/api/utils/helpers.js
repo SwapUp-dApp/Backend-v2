@@ -1,5 +1,6 @@
 import logger from '../../logger';
 const crypto = require('crypto');
+import db from "../../database/models"
 
 // const fs = require('fs');
 // const path = require('path');
@@ -52,3 +53,14 @@ export function isValidWebhookSignature(body, timestamp, signature, secret) {
   );
 }
 // Webhook helper functions ends here
+
+// helper for entering a new record in notififications table
+export const createNotification = async (receiver_address,originator_address,status,trade_id) => {
+  await db.notifications.create({
+      receiver_address,
+      originator_address,
+      status,
+      trade_id,
+      read: false
+  })
+}

@@ -15,6 +15,15 @@ export const SwapStatus = {
     CANCELLED: 4
 };
 
+export const NotificationStatus = {
+    RECEIVED: 1,
+    REJECTED: 2,
+    COMPLETED: 3,
+    COUNTERED: 4,
+    COUNTER_REJECTED: 5,
+    CANCELLED:6
+}
+
 export const SUE_BlobPictureType = {
     AVATAR: 'profile-avatar',
     COVER: 'profile-cover'

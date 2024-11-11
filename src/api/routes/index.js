@@ -8,6 +8,7 @@ import { twitterRouter } from "./twitterRouter.js";
 import { userRouter } from "./userRouter.js";
 import { paymentRouter } from "./paymentRouter.js";
 import { treasuryRouter } from "./treasuryRouter.js";
+import { notificationRouter } from "./notificationRouter.js"
 
 
 const apiRouter = express.Router();
@@ -20,6 +21,7 @@ apiRouter
   .use("/twitter", twitterRouter)
   .use("/user", userRouter)
   .use("/payment", paymentRouter)
-  .use("/treasury", treasuryRouter);
+  .use("/treasury", treasuryRouter)
+  .use("/notifications", notificationRouter)
 
 export default apiRouter;
