@@ -64,8 +64,40 @@ const fetchOlderNotifications = async (req, res) => {
     }
 }
 
+const deleteNotification = async (req, res) => {
+    try {
+        const response = await db.notifications.destroy({
+            where: { id: req.params.id }
+        })
+        res.json({
+            success: true,
+            message: "delete_notification",
+            data: response
+        })
+    } catch (err) {
+        handleError(res, err, "delete_notification error")
+    }
+}
+
+const deleteAllNotifications = async (req, res) => {
+    try {
+        const response = await db.notifications.destroy({
+            where: { receiver_address: req.params.address }
+        })
+        res.json({
+            success: true,
+            message: "delete_all_notifications",
+            data: response
+        })
+    } catch (err) {
+        handleError(res, err, "delete_all_notifications error")
+    }
+}
+
 export const notificationController = {
     markAsRead,
     checkNewNotifications,
-    fetchOlderNotifications
+    fetchOlderNotifications,
+    deleteNotification,
+    deleteAllNotifications
 }

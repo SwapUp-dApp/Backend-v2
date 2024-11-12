@@ -65,10 +65,10 @@ const counterSwapOffer = async (req, res) => {
         accept_address,
         id,
         open_trade_id,
-        trading_chain,
-        trade_id
+        trading_chain
     } = req.body
     try {
+        const trade_id = (await db.swaps.findByPk(id)).trade_id
         const response = await db.swaps.update(
             {
                 metadata: JSON.stringify(metadata),

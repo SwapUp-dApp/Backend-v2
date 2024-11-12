@@ -209,10 +209,10 @@ const proposeOpenSwap = async (req, res) => {
         })
         try {
             await createNotification(
-                req.body.init_address.trim(),
                 req.body.accept_address.trim(),
+                req.body.init_address.trim(),
                 NotificationStatus.RECEIVED,
-                req.body.trade_id
+                req.body.open_trade_id
             )
         } catch (err) {
             console.error(err)
@@ -315,37 +315,44 @@ const cancelSwapOffer = async (req, res) => {
         }
         try {
             if (swap_mode === SwapMode.OPEN) {
-                const receiverAddresses = await db.notifications.findAll({
-                    attributes: ["originator_address"], // The column you want to select
-                    where: {
-                        trade_id // The condition for selection
-                    }
-                })
-                const originatorAddress = await db.notifications.findOne({
-                    attributes: ["receiver_address"], // The column you want to select
-                    where: {
-                        trade_id // The condition for selection
-                    }
-                })
+                const receiverAddresses = (
+                    await db.notifications.findAll({
+                        attributes: ["originator_address"],
+                        where: {
+                            trade_id: open_trade_id // The condition for selection
+                        },
+                        raw: true
+                    })
+                ).map((address) => address.originator_address)
+                const originatorAddress = (
+                    await db.notifications.findOne({
+                        attributes: ["receiver_address"],
+                        where: {
+                            trade_id: open_trade_id // The condition for selection
+                        },
+                        raw: true
+                    })
+                ).receiver_address
+                console.log("addresses", receiverAddresses, originatorAddress)
                 receiverAddresses.forEach(async (address) => {
                     await createNotification(
                         address,
                         originatorAddress,
                         NotificationStatus.CANCELLED,
-                        trade_id
+                        open_trade_id
                     )
                 })
             } else {
                 const { receiver_address, originator_address } =
                     await db.notifications.findOne({
-                        attributes: ["receiver_address", "originator_address"], // The column you want to select
+                        attributes: ["receiver_address", "originator_address"],
                         where: {
                             trade_id // The condition for selection
                         }
                     })
                 await createNotification(
-                    originator_address,
                     receiver_address,
+                    originator_address,
                     NotificationStatus.CANCELLED,
                     trade_id
                 )
@@ -371,6 +378,8 @@ const acceptOpenSwap = async (req, res) => {
         const { accept_sign, tx, notes, timestamp, id, accept_address } =
             req.body //accept offer based on trade_id and remove all other open_trade_id's
         const swap = await db.swaps.findByPk(id)
+        console.log("swap", swap.init_address)
+
         if (!swap || swap.status !== SwapStatus.PENDING) {
             return res.status(400).json({
                 success: false,
@@ -428,31 +437,37 @@ const acceptOpenSwap = async (req, res) => {
         })
 
         try {
-            const originatorAddress = await db.notifications.findOne({
-                attributes: ["receiver_address"], // The column you want to select
-                where: {
-                    trade_id // The condition for selection
-                }
-            })
-            const receiverAddresses = await db.notifications.findAll({
-                attributes: ["originator_address"], // The column you want to select
-                where: {
-                    trade_id // The condition for selection
-                }
-            })
+            const originatorAddress = (
+                await db.notifications.findOne({
+                    attributes: ["receiver_address"], // The column you want to select
+                    where: {
+                        trade_id: swap.open_trade_id // The condition for selection
+                    },
+                    raw: true
+                })
+            ).receiver_address
+            const receiverAddresses = (
+                await db.notifications.findAll({
+                    attributes: ["originator_address"], // The column you want to select
+                    where: {
+                        trade_id: swap.open_trade_id // The condition for selection
+                    },
+                    raw: true
+                })
+            ).map((address) => address.originator_address)
             receiverAddresses.forEach(async (address) => {
-                address !== accept_address
+                address !== swap.init_address
                     ? await createNotification(
                           address,
                           originatorAddress,
                           NotificationStatus.REJECTED,
-                          trade_id
+                          swap.open_trade_id
                       )
                     : await createNotification(
                           address,
                           originatorAddress,
                           NotificationStatus.COMPLETED,
-                          trade_id
+                          swap.open_trade_id
                       )
             })
         } catch (err) {
@@ -497,7 +512,9 @@ const rejectSwapOffer = async (req, res) => {
             await createNotification(
                 swap.init_address,
                 swap.accept_address,
-                NotificationStatus.REJECTED,
+                swap.offer_type === OfferType.PRIMARY
+                    ? NotificationStatus.REJECTED
+                    : NotificationStatus.COUNTER_REJECTED,
                 id
             )
         } catch (err) {
