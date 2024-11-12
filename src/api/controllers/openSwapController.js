@@ -9,21 +9,20 @@ import { handleError } from "../../errors";
 
 const createOpenSwap = async (req, res) => {
     try {
-        const metadata = req.body.metadata;
-        const swap_preferences = req.body.swap_preferences;
+        const { init_address, offer_type, open_trade_id, swap_mode, trading_chain, swap_preferences, init_sign, metadata } = req.body;
+
         logger.info(metadata);
         const response = await db.swaps.create({
             metadata: JSON.stringify(metadata),
-            init_address: req.body.init_address.trim(),
-            swap_mode: req.body.swap_mode,
-            open_trade_id: req.body.open_trade_id,
-            trading_chain: req.body.trading_chain,
+            init_address: init_address.trim(),
+            swap_mode: swap_mode,
+            open_trade_id: open_trade_id,
+            trading_chain: trading_chain,
             swap_preferences: JSON.stringify(swap_preferences),
-
             status: SwapStatus.PENDING,
             offer_type: OfferType.PRIMARY,
             trade_id: null,
-
+            init_sign: init_sign
         });
         if (response) {
             res.json({
@@ -240,18 +239,18 @@ const closeOpenSwapOffers = async (req, res) => {
 //this will cancel an Open Market Swap offer - which will decline all proposal i.e update their status to cancelled
 const cancelSwapOffer = async (req, res) => {
     try {
-        const { open_trade_id, swap_mode, trade_id } = req.body; // delete all offers based on open_trade_id
+        const { open_trade_id, swap_mode, trade_id, sign_message } = req.body; // delete all offers based on open_trade_id
         let response;
         if (swap_mode === SwapMode.OPEN) {
             response = await db.sequelize.transaction(async (t) => {
 
                 const closeOrigOpenSwap = await db.swaps.update(
-                    { status: SwapStatus.CANCELLED },
+                    { status: SwapStatus.CANCELLED, init_sign: sign_message },
                     { where: { open_trade_id: open_trade_id, accept_address: null, status: SwapStatus.PENDING }, transaction: t }
                 );
 
                 const declineOffers = await db.swaps.update(
-                    { status: SwapStatus.DECLINED },
+                    { status: SwapStatus.DECLINED, accept_sign: sign_message },
                     { where: { open_trade_id: open_trade_id, status: SwapStatus.PENDING }, transaction: t }
                 );
 
@@ -261,7 +260,7 @@ const cancelSwapOffer = async (req, res) => {
         if (swap_mode === SwapMode.PRIVATE) {
             response = await db.sequelize.transaction(async (t) => {
                 const updateOffers = await db.swaps.update(
-                    { status: SwapStatus.CANCELLED },
+                    { status: SwapStatus.CANCELLED, init_sign: sign_message },
                     { where: { trade_id: trade_id, status: SwapStatus.PENDING }, transaction: t }
                 );
 
@@ -335,9 +334,10 @@ const acceptOpenSwap = async (req, res) => {
 //we are rejecting a swap proposal against an Open Market Swap 
 const rejectSwapOffer = async (req, res) => {
     try {
-
         const id = req.query.id; //reject offer based on id
         const swap = await db.swaps.findByPk(id);
+        const { sign_message } = req.body;
+
         if (!swap || swap.status !== SwapStatus.PENDING) {
             return res.status(400).json({
                 success: false,
@@ -347,7 +347,8 @@ const rejectSwapOffer = async (req, res) => {
 
         const response = await db.sequelize.transaction(async (t) => {
             const updateSwap = await swap.update({
-                status: SwapStatus.DECLINED
+                status: SwapStatus.DECLINED,
+                accept_sign: sign_message
             }, { transaction: t });
             return { updateSwap };
         });
