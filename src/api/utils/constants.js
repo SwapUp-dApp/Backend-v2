@@ -18,6 +18,16 @@ export const SUE_SWAP_COMPLETE_ACTION_STRING = {
     value1: "COMPLETED"
 };
 
+export const SUE_SWAP_CANCEL_ACTION_STRING = {
+    value0: "SWAP",
+    value1: "PROPOSAL"
+};
+
+export const SUE_SWAP_CANCEL_ACTION = {
+    SWAP: "SWAP",
+    PROPOSAL: "PROPOSAL"
+};
+
 export const SwapStatus = {
     PENDING: 1,
     COMPLETED: 2,
