@@ -1,8 +1,13 @@
 // openSwapController.js
 import db from "../../database/models";
 import { Op } from "sequelize";
-import { OfferType, SwapMode, SwapStatus } from '../utils/constants.js';
-import { tryParseJSON } from "../utils/helpers";
+import {
+    OfferType,
+    SwapMode,
+    SwapStatus,
+    NotificationStatus
+} from "../utils/constants.js";
+import { tryParseJSON, createNotification } from "../utils/helpers";
 import { updateUserTagsIfFirstTrade } from "../utils/userTagsUpdater";
 import logger from "../../logger";
 import { handleError } from "../../errors";
@@ -43,20 +48,20 @@ const getOpenSwapList = async (req, res) => {
                 [Op.and]: [
                     { status: SwapStatus.PENDING },
                     { swap_mode: SwapMode.OPEN },
-                    { accept_address: null },
+                    { accept_address: null }
                 ]
             }
         });
 
         // Convert metadata and swap_preferences to JSON if they are valid JSON strings
-        const formattedResponse = response.map(swap => {
+        const formattedResponse = response.map((swap) => {
             const swapJSON = swap.toJSON();
             const formattedSwap = {
                 ...swapJSON,
                 metadata: tryParseJSON(swapJSON.metadata),
                 swap_preferences: tryParseJSON(swapJSON.swap_preferences),
                 created_at: swapJSON.createdAt,
-                updated_at: swapJSON.updatedAt,
+                updated_at: swapJSON.updatedAt
             };
             // Remove original createdAt and updatedAt fields
             delete formattedSwap.createdAt;
@@ -85,9 +90,9 @@ const getMyOpenSwapList = async (req, res) => {
                     trade_id: null,
                     accept_address: null,
                     init_address: req.query.address,
-                    status: SwapStatus.PENDING,
-                },
-            },
+                    status: SwapStatus.PENDING
+                }
+            }
         });
 
         // Convert metadata and swap_preferences to JSON if they are valid JSON strings
@@ -99,15 +104,15 @@ const getMyOpenSwapList = async (req, res) => {
                 swap_preferences: tryParseJSON(swapJSON.swap_preferences),
                 created_at: swapJSON.createdAt,
                 updated_at: swapJSON.updatedAt,
-                number_of_offers: 0,
+                number_of_offers: 0
             };
 
             if (swapJSON.swap_mode === 0) {
                 const numberofoffers = await db.swaps.findAll({
                     where: {
                         open_trade_id: swapJSON.open_trade_id,
-                        swap_preferences: null,
-                    },
+                        swap_preferences: null
+                    }
                 });
                 if (numberofoffers) {
                     formattedSwap.number_of_offers = numberofoffers.length;
@@ -127,7 +132,7 @@ const getMyOpenSwapList = async (req, res) => {
         res.json({
             success: true,
             message: "get_my_open_swap_list",
-            data: formattedResponse,
+            data: formattedResponse
         });
     } catch (err) {
         handleError(res, err, "get_my_open_swap_list error");
@@ -150,7 +155,7 @@ const getSwapPreferences = async (req, res) => {
         const formattedResponse = () => {
             const swapJSON = swap.toJSON();
             const formattedSwap = {
-                swap_preferences: tryParseJSON(swapJSON.swap_preferences),
+                swap_preferences: tryParseJSON(swapJSON.swap_preferences)
             };
             // Remove original createdAt and updatedAt fields
 
@@ -171,7 +176,16 @@ const getSwapPreferences = async (req, res) => {
 
 const proposeOpenSwap = async (req, res) => {
     try {
-        const { trade_id, metadata, init_address, init_sign, open_trade_id, id, accept_address, trading_chain } = req.body;  //trade_id //metadata is accept_meta // open_trade_id
+        const {
+            trade_id,
+            metadata,
+            init_address,
+            init_sign,
+            open_trade_id,
+            id,
+            accept_address,
+            trading_chain
+        } = req.body; //trade_id //metadata is accept_meta // open_trade_id
 
         const swap = await db.swaps.findByPk(id);
         if (!swap || swap.status !== SwapStatus.PENDING) {
@@ -193,19 +207,30 @@ const proposeOpenSwap = async (req, res) => {
             offer_type: OfferType.PRIMARY,
             swap_mode: SwapMode.OPEN
         });
-        if (response) {
-            res.json({
-                success: true,
-                message: "propose_open_swap",
-                data: response
-            });
+        try {
+            await createNotification(
+                req.body.accept_address.trim(),
+                req.body.init_address.trim(),
+                NotificationStatus.RECEIVED,
+                req.body.open_trade_id
+            );
+        } catch (err) {
+            console.error(err);
+        } finally {
+            if (response) {
+                res.json({
+                    success: true,
+                    message: "propose_open_swap",
+                    data: response
+                });
+            }
         }
     } catch (err) {
         handleError(res, err, "propose_open_swap error");
     }
 };
 
-//used when a user closes their own Open Market Swap 
+//used when a user closes their own Open Market Swap
 const closeOpenSwapOffers = async (req, res) => {
     try {
         const { open_trade_id } = req.body; // delete all offers based on open_trade_id
@@ -213,7 +238,10 @@ const closeOpenSwapOffers = async (req, res) => {
         const response = await db.sequelize.transaction(async (t) => {
             const updateOffers = await db.swaps.update(
                 { status: SwapStatus.DECLINED },
-                { where: { trade_id: swapId, status: SwapStatus.PENDING }, transaction: t }
+                {
+                    where: { trade_id: swapId, status: SwapStatus.PENDING },
+                    transaction: t
+                }
             );
 
             const updateSwap = await db.swaps.update(
@@ -243,7 +271,6 @@ const cancelSwapOffer = async (req, res) => {
         let response;
         if (swap_mode === SwapMode.OPEN) {
             response = await db.sequelize.transaction(async (t) => {
-
                 const closeOrigOpenSwap = await db.swaps.update(
                     { status: SwapStatus.CANCELLED, init_sign: sign_message },
                     { where: { open_trade_id: open_trade_id, accept_address: null, status: SwapStatus.PENDING }, transaction: t }
@@ -267,13 +294,60 @@ const cancelSwapOffer = async (req, res) => {
                 return { updateOffers };
             });
         }
-
-        if (response) {
-            res.json({
-                success: true,
-                message: "cancel_open_swap_offers",
-                data: response
-            });
+        try {
+            if (swap_mode === SwapMode.OPEN) {
+                const receiverAddresses = (
+                    await db.notifications.findAll({
+                        attributes: ["originator_address"],
+                        where: {
+                            trade_id: open_trade_id // The condition for selection
+                        },
+                        raw: true
+                    })
+                ).map((address) => address.originator_address);
+                const originatorAddress = (
+                    await db.notifications.findOne({
+                        attributes: ["receiver_address"],
+                        where: {
+                            trade_id: open_trade_id // The condition for selection
+                        },
+                        raw: true
+                    })
+                ).receiver_address;
+                console.log("addresses", receiverAddresses, originatorAddress);
+                receiverAddresses.forEach(async (address) => {
+                    await createNotification(
+                        address,
+                        originatorAddress,
+                        NotificationStatus.CANCELLED,
+                        open_trade_id
+                    );
+                });
+            } else {
+                const { receiver_address, originator_address } =
+                    await db.notifications.findOne({
+                        attributes: ["receiver_address", "originator_address"],
+                        where: {
+                            trade_id // The condition for selection
+                        }
+                    });
+                await createNotification(
+                    receiver_address,
+                    originator_address,
+                    NotificationStatus.CANCELLED,
+                    trade_id
+                );
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            if (response) {
+                res.json({
+                    success: true,
+                    message: "cancel_open_swap_offers",
+                    data: response
+                });
+            }
         }
     } catch (err) {
         handleError(res, err, "cancel_open_swap_offers error");
@@ -282,56 +356,118 @@ const cancelSwapOffer = async (req, res) => {
 
 const acceptOpenSwap = async (req, res) => {
     try {
-        const { accept_sign, tx, notes, timestamp, id, accept_address } = req.body; //accept offer based on trade_id and remove all other open_trade_id's
+        const { accept_sign, tx, notes, timestamp, id, accept_address } =
+            req.body; //accept offer based on trade_id and remove all other open_trade_id's
         const swap = await db.swaps.findByPk(id);
+        console.log("swap", swap.init_address);
+
         if (!swap || swap.status !== SwapStatus.PENDING) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid swap ID or swap is not in a valid state for acceptance"
+                message:
+                    "Invalid swap ID or swap is not in a valid state for acceptance"
             });
         }
 
         const response = await db.sequelize.transaction(async (t) => {
-            const updateSwap = await swap.update({
-                accept_address: accept_address.trim(),
-                accept_sign: accept_sign.trim(),
-                status: SwapStatus.COMPLETED,
-                tx: tx,
-                notes: notes,
-                timestamp: timestamp
-            }, { transaction: t });
+            const updateSwap = await swap.update(
+                {
+                    accept_address: accept_address.trim(),
+                    accept_sign: accept_sign.trim(),
+                    status: SwapStatus.COMPLETED,
+                    tx: tx,
+                    notes: notes,
+                    timestamp: timestamp
+                },
+                { transaction: t }
+            );
 
             const declineOffers = await db.swaps.update(
                 { status: SwapStatus.DECLINED },
-                { where: { open_trade_id: swap.open_trade_id, accept_address: swap.accept_address, status: SwapStatus.PENDING }, transaction: t }
+                {
+                    where: {
+                        open_trade_id: swap.open_trade_id,
+                        accept_address: swap.accept_address,
+                        status: SwapStatus.PENDING
+                    },
+                    transaction: t
+                }
             );
 
             const closeOrigOpenSwap = await db.swaps.update(
                 { status: SwapStatus.COMPLETED },
-                { where: { open_trade_id: swap.open_trade_id, accept_address: null, status: SwapStatus.PENDING }, transaction: t }
+                {
+                    where: {
+                        open_trade_id: swap.open_trade_id,
+                        accept_address: null,
+                        status: SwapStatus.PENDING
+                    },
+                    transaction: t
+                }
             );
 
             // Update tags for both users
-            await updateUserTagsIfFirstTrade(db, swap.init_address, accept_address, t);
+            await updateUserTagsIfFirstTrade(
+                db,
+                swap.init_address,
+                accept_address,
+                t
+            );
 
             return { updateSwap, declineOffers, closeOrigOpenSwap };
         });
 
-
-
-        if (response) {
-            res.json({
-                success: true,
-                message: "accept_open_swap",
-                data: response
+        try {
+            const originatorAddress = (
+                await db.notifications.findOne({
+                    attributes: ["receiver_address"], // The column you want to select
+                    where: {
+                        trade_id: swap.open_trade_id // The condition for selection
+                    },
+                    raw: true
+                })
+            ).receiver_address;
+            const receiverAddresses = (
+                await db.notifications.findAll({
+                    attributes: ["originator_address"], // The column you want to select
+                    where: {
+                        trade_id: swap.open_trade_id // The condition for selection
+                    },
+                    raw: true
+                })
+            ).map((address) => address.originator_address);
+            receiverAddresses.forEach(async (address) => {
+                address !== swap.init_address
+                    ? await createNotification(
+                        address,
+                        originatorAddress,
+                        NotificationStatus.REJECTED,
+                        swap.open_trade_id
+                    )
+                    : await createNotification(
+                        address,
+                        originatorAddress,
+                        NotificationStatus.COMPLETED,
+                        swap.open_trade_id
+                    );
             });
+        } catch (err) {
+            console.error(err);
+        } finally {
+            if (response) {
+                res.json({
+                    success: true,
+                    message: "accept_open_swap",
+                    data: response
+                });
+            }
         }
     } catch (err) {
         handleError(res, err, "accept_open_swap error");
     }
 };
 
-//we are rejecting a swap proposal against an Open Market Swap 
+//we are rejecting a swap proposal against an Open Market Swap
 const rejectSwapOffer = async (req, res) => {
     try {
         const id = req.query.id; //reject offer based on id
@@ -341,7 +477,8 @@ const rejectSwapOffer = async (req, res) => {
         if (!swap || swap.status !== SwapStatus.PENDING) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid swap ID or swap is not in a valid state for rejection"
+                message:
+                    "Invalid swap ID or swap is not in a valid state for rejection"
             });
         }
 
@@ -364,7 +501,6 @@ const rejectSwapOffer = async (req, res) => {
         handleError(res, err, "rejected_swap error");
     }
 };
-
 
 export const openSwapController = {
     createOpenSwap,

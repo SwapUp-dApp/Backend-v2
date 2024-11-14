@@ -5,5 +5,8 @@
   "20240930115440-update-points-column-type.js",
   "20241014085150-create-payments.js",
   "20241023083143-add-smartAccount-privateKey-to-user.js",
-  "20241024082757-add-subscriptionPurchase-to-payments.js"
+  "20241024082757-add-subscriptionPurchase-to-payments.js",
+  "20241107105255-create-notifications-table.js",
+  "20241107161351-rename-column.js",
+  "20241108071047-add-new-column.js"
 ]

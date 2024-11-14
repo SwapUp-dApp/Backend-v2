@@ -9,6 +9,7 @@ import { userRouter } from "./userRouter.js";
 import { paymentRouter } from "./paymentRouter.js";
 import { treasuryRouter } from "./treasuryRouter.js";
 import { smartContractRouter } from "./smartContractRouter.js";
+import { notificationRouter } from "./notificationRouter.js";
 
 
 const apiRouter = express.Router();
@@ -22,6 +23,7 @@ apiRouter
   .use("/user", userRouter)
   .use("/payment", paymentRouter)
   .use("/treasury", treasuryRouter)
-  .use("/smart-contract", smartContractRouter);
+  .use("/smart-contract", smartContractRouter)
+  .use("/notifications", notificationRouter);
 
 export default apiRouter;
