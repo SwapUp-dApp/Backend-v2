@@ -47,7 +47,7 @@ async function create_user(req, res) {
     });
 
     // Format the user object before sending the response, excluding twitter_access
-    const { twitter_access, ...restUserData } = user.dataValues;
+    let { twitter_access, privateKey, ...restUserData } = user.dataValues;
     let formattedUser = getFormattedUserDetails(restUserData);
 
     if (created) {
@@ -55,6 +55,13 @@ async function create_user(req, res) {
 
       const smartAccount = await createOrGetSmartAccount(walletId);
       logger.info("smartAccount: ", smartAccount);
+
+      const latestUser = await db.users.findOne({
+        where: { wallet: walletId }
+      });
+
+      const { twitter_access, privateKey, ...restUserLatestData } = await latestUser.dataValues;
+      formattedUser = getFormattedUserDetails(restUserLatestData);
 
       return res.status(201).json({
         success: true,
@@ -212,7 +219,7 @@ async function get_user_by_wallet(req, res) {
     }
 
     // Format the user object before sending the response, excluding twitter_access
-    const { twitter_access, ...restUserData } = user.dataValues;
+    const { twitter_access, privateKey, ...restUserData } = user.dataValues;
     const formattedUser = getFormattedUserDetails(restUserData);
 
     // Send the formatted user data
@@ -272,10 +279,12 @@ async function edit_user_profile(req, res) {
 
 async function test_aa_address_using_key(req, res) {
   try {
+    const { privateKey } = req.body;
+
     let personalAccount, newSmartWallet, smartAccount;
     personalAccount = privateKeyToAccount({
       client: thirdWebClient,
-      privateKey: "0x98aa2903f8ec54660124972d8c693fadd7d3d4d01189354cc1a62f31d16c72e7",
+      privateKey: privateKey
     });
 
     // Configure the new smart wallet
