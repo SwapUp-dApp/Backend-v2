@@ -46,13 +46,13 @@ db.notifications = require("./notifications.js")(sequelize, Sequelize);
 
 // Synchronize all models with the database, creating tables if they don't exist
 // **** ONLY TO BE USED WITHIN DEV EVNIRONMENT FOR FIRST TIME SETUP **** //
-sequelize.sync()
-    .then(() => {
-        logger.info('All models were synchronized successfully.');
-    })
-    .catch(err => {
-        logger.error('An error occurred while synchronizing models:', err);
-    });
+// sequelize.sync()
+//     .then(() => {
+//         logger.info('All models were synchronized successfully.');
+//     })
+//     .catch(err => {
+//         logger.error('An error occurred while synchronizing models:', err);
+//     });
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
