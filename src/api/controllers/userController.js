@@ -2,12 +2,10 @@ import Environment from "../../config";
 import db from "../../database/models";
 import { handleError } from "../../errors";
 import logger from "../../logger";
-import { tryParseJSON } from "../utils/helpers";
+import { createOrGetSmartAccount, tryParseJSON } from "../utils/helpers";
 
 
-import { Wallet } from "ethers";
 import { smartWallet, privateKeyToAccount } from "thirdweb/wallets";
-import { addAdmin } from "thirdweb/extensions/erc4337";
 import { sendTransaction, getContract } from "thirdweb";
 import { currentChain, thirdWebClient } from "../../utils/thirdwebHelpers";
 import { transfer } from "thirdweb/extensions/erc20";
@@ -50,18 +48,15 @@ async function create_user(req, res) {
     let { twitter_access, privateKey, ...restUserData } = user.dataValues;
     let formattedUser = getFormattedUserDetails(restUserData);
 
+    if (created || (!restUserData.smartAccount && !privateKey)) {
+      const { smartAccount, newSmartWallet } = await createOrGetSmartAccount(walletId);
+      formattedUser = { ...formattedUser, smartAccount: smartAccount.address };
+      await newSmartWallet.disconnect();
+    }
+
     if (created) {
       logger.info("Created user: ", formattedUser);
-
-      const smartAccount = await createOrGetSmartAccount(walletId);
-      logger.info("smartAccount: ", smartAccount);
-
-      const latestUser = await db.users.findOne({
-        where: { wallet: walletId }
-      });
-
-      const { twitter_access, privateKey, ...restUserLatestData } = await latestUser.dataValues;
-      formattedUser = getFormattedUserDetails(restUserLatestData);
+      logger.info("Created new smart account smartAccount: ", formattedUser.smartAccount);
 
       return res.status(201).json({
         success: true,
@@ -89,7 +84,7 @@ async function transfer_erc20_tokens(req, res) {
 
     const { SWAPUP_TREASURY_SMART_ACCOUNT } = Environment;
 
-    const smartAccount = await createOrGetSmartAccount(userWalletId);
+    const { smartAccount, newSmartWallet } = await createOrGetSmartAccount(userWalletId);
 
     // Retrieve the ERC-20 token contract
     const tokenContract = getContract({
@@ -118,6 +113,7 @@ async function transfer_erc20_tokens(req, res) {
 
     // Log the transaction and respond with success
     logger.info(`Tokens transferred to ${SWAPUP_TREASURY_SMART_ACCOUNT}`, transferResult);
+    await newSmartWallet.disconnect();
 
     return res.status(201).json({
       success: true,
@@ -313,111 +309,6 @@ async function test_aa_address_using_key(req, res) {
 }
 
 // Helper functions - start here
-
-// For creating new or getting smart wallet details from db
-async function createOrGetSmartAccount(walletId) {
-  // Find the user based on the wallet ID
-  const user = await db.users.findOne({
-    where: { wallet: walletId }
-  });
-
-  if (!user) {
-    throw new Error(`User with wallet ID ${walletId} not found.`);
-  }
-
-  let personalAccount, newSmartWallet, smartAccount;
-
-  // Check if the smart account already exists in the user's data
-  if (user.smartAccount && user.privateKey) {
-    // Create personal account with the existing private key
-    personalAccount = privateKeyToAccount({
-      client: thirdWebClient,
-      privateKey: user.privateKey,
-    });
-
-    // Create a new smart wallet
-    newSmartWallet = smartWallet({
-      chain: currentChain,
-      sponsorGas: true,
-    });
-
-    // Connect to the existing smart account
-    smartAccount = await newSmartWallet.connect({
-      client: thirdWebClient,
-      personalAccount,
-    });
-
-    return smartAccount; // Return the connected smart account
-  }
-
-  // If no smart account exists, create a new one
-  const generatedPrivateKey = Wallet.createRandom().privateKey;
-  personalAccount = privateKeyToAccount({
-    client: thirdWebClient,
-    privateKey: generatedPrivateKey,
-  });
-
-  // Configure the new smart wallet
-  newSmartWallet = smartWallet({
-    chain: currentChain,
-    sponsorGas: true,
-  });
-
-  // Connect to the new smart account
-  smartAccount = await newSmartWallet.connect({
-    client: thirdWebClient,
-    personalAccount,
-  });
-
-  // Save the new smart account and private key to the user's record
-  if (smartAccount.address && generatedPrivateKey) {
-    await user.update({
-      privateKey: generatedPrivateKey,
-      smartAccount: smartAccount.address,
-    });
-  }
-
-  // Define admin addresses to be added
-  const adminAddresses = [walletId, Environment.SWAPUP_TREASURY_SMART_ACCOUNT]; // User's walletId and Swapup treasury wallet
-
-  // Adding admins to the smart wallet
-  try {
-    const addAdminToSmartWallet = async (adminAddress) => {
-      const adminTransaction = addAdmin({
-        contract: getContract({
-          address: smartAccount.address,
-          client: thirdWebClient,
-          chain: currentChain,
-        }),
-        account: smartAccount,
-        adminAddress,
-      });
-
-      // logger.info(`Adding admin: ${adminAddress}`, adminTransaction);
-
-      return await sendTransaction({
-        transaction: adminTransaction,
-        account: smartAccount,
-      });
-    };
-
-    // Add admin accounts
-    if (walletId === Environment.SWAPUP_TREASURY_SMART_ACCOUNT) {
-      const result = await addAdminToSmartWallet(walletId);
-      logger.info(`Admin ${walletId} added: `, result);
-    } else {
-      for (const adminAddress of adminAddresses) {
-        const result = await addAdminToSmartWallet(adminAddress);
-        logger.info(`Admin ${adminAddress} added: `, result);
-      }
-    }
-  } catch (error) {
-    logger.error(`Admin not added: ${error.message || error}`);
-  }
-
-  return smartAccount; // Return the newly connected smart account
-}
-
 async function updateUserPointsByWallet(walletId, pointsToAdd, keyType, defaultPointSystem) {
   // Fetch the user by walletId
   const user = await db.users.findOne({ where: { wallet: walletId } });
