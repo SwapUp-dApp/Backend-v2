@@ -1,17 +1,13 @@
 import Environment from "../../config";
 import { CustomError, handleError } from "../../errors";
 import logger from "../../logger";
-
-import { ethers6Adapter } from "thirdweb/adapters/ethers6";
-import { smartWallet, privateKeyToAccount } from "thirdweb/wallets";
 import { sendTransaction, getContract, ZERO_ADDRESS, prepareContractCall, toWei, readContract } from "thirdweb";
 import { currentChain, thirdWebClient } from "../../utils/thirdwebHelpers";
 import { SUE_SWAP_CANCEL_ACTION, SUE_SWAP_COMPLETE_ACTION_STRING, SwapMode, SwapModeString } from "../utils/constants";
 import db from "../../database/models";
-// import { useReadContract } from "thirdweb/react";
+import { createOrGetSmartAccount } from "../utils/helpers";
 
 
-// To transfer ERC20 Tokens from swapup treasury smart account --> users smart account
 async function create_swap(req, res) {
   try {
     const { walletId } = req.params;
@@ -335,109 +331,6 @@ async function get_sign_message_string(req, res) {
 
 
 // Helper functions
-async function createOrGetSmartAccount(walletId) {
-  // Find the user based on the wallet ID
-  const user = await db.users.findOne({
-    where: { wallet: walletId }
-  });
-
-  if (!user) {
-    throw new Error(`User with wallet ID ${walletId} not found.`);
-  }
-
-  let personalAccount, newSmartWallet, smartAccount;
-
-  // Check if the smart account already exists in the user's data
-  if (user.smartAccount && user.privateKey) {
-    // Create personal account with the existing private key
-    personalAccount = privateKeyToAccount({
-      client: thirdWebClient,
-      privateKey: user.privateKey,
-    });
-
-    // Create a new smart wallet
-    newSmartWallet = smartWallet({
-      chain: currentChain,
-      sponsorGas: true,
-    });
-
-    // Connect to the existing smart account
-    smartAccount = await newSmartWallet.connect({
-      client: thirdWebClient,
-      personalAccount,
-    });
-
-    return { smartAccount, newSmartWallet }; // Return the connected smart account
-  }
-
-  // If no smart account exists, create a new one
-  const generatedPrivateKey = Wallet.createRandom().privateKey;
-  personalAccount = privateKeyToAccount({
-    client: thirdWebClient,
-    privateKey: generatedPrivateKey,
-  });
-
-  // Configure the new smart wallet
-  newSmartWallet = smartWallet({
-    chain: currentChain,
-    sponsorGas: true,
-  });
-
-  // Connect to the new smart account
-  smartAccount = await newSmartWallet.connect({
-    client: thirdWebClient,
-    personalAccount,
-  });
-
-  // Save the new smart account and private key to the user's record
-  if (smartAccount.address && generatedPrivateKey) {
-    await user.update({
-      privateKey: generatedPrivateKey,
-      smartAccount: smartAccount.address,
-    });
-  }
-
-  // Define admin addresses to be added
-  const adminAddresses = [walletId, Environment.SWAPUP_TREASURY_SMART_ACCOUNT]; // User's walletId and Swapup treasury wallet
-
-  // Adding admins to the smart wallet
-  try {
-    const addAdminToSmartWallet = async (adminAddress) => {
-      const adminTransaction = addAdmin({
-        contract: getContract({
-          address: smartAccount.address,
-          client: thirdWebClient,
-          chain: currentChain,
-        }),
-        account: smartAccount,
-        adminAddress,
-      });
-
-      // logger.info(`Adding admin: ${adminAddress}`, adminTransaction);
-
-      return await sendTransaction({
-        transaction: adminTransaction,
-        account: smartAccount,
-      });
-    };
-
-    // Add admin accounts
-    if (walletId === Environment.SWAPUP_TREASURY_SMART_ACCOUNT) {
-      const result = await addAdminToSmartWallet(walletId);
-      logger.info(`Admin ${walletId} added: `, result);
-    } else {
-      for (const adminAddress of adminAddresses) {
-        const result = await addAdminToSmartWallet(adminAddress);
-        logger.info(`Admin ${adminAddress} added: `, result);
-      }
-    }
-  } catch (error) {
-    logger.error(`Admin not added: ${error.message || error}`);
-  }
-
-  return { smartAccount, newSmartWallet }; // Return the newly connected smart account
-}
-
 const getFormattedAssetsBySwap = async (smartAccount, initiatorAssets, responderAssets) => {
   try {
     let formattedInitAssets = [];
