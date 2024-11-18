@@ -8,5 +8,6 @@
   "20241024082757-add-subscriptionPurchase-to-payments.js",
   "20241107105255-create-notifications-table.js",
   "20241107161351-rename-column.js",
-  "20241108071047-add-new-column.js"
+  "20241108071047-add-new-column.js",
+  "20241118134156-add-column-to-table.js"
 ]

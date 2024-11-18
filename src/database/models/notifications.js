@@ -40,6 +40,10 @@ module.exports = (sequelize) => {
             read: {
                 type: DataTypes.BOOLEAN,
                 allowNull: false
+            },
+            proposal_id: {
+                type: DataTypes.STRING,
+                allowNull: true
             }
         },
         {
