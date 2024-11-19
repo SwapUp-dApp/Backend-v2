@@ -43,7 +43,7 @@ const checkNewNotifications = async (req, res) => {
 }
 
 const fetchOlderNotifications = async (req, res) => {
-    const pageSize = 10
+    const pageSize = 20
     try {
         const offset = (req.query.page - 1) * pageSize // Calculate the offset for pagination
         const response = await db.notifications.findAll({
