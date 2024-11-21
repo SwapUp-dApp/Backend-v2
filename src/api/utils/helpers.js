@@ -7,6 +7,7 @@ import { addAdmin } from 'thirdweb/extensions/erc4337';
 import { privateKeyToAccount, smartWallet } from 'thirdweb/wallets';
 import { Wallet } from 'ethers';
 import { currentChain, thirdWebClient } from '../../utils/thirdwebHelpers';
+import { SwapMode } from './constants';
 
 // const fs = require('fs');
 // const path = require('path');
@@ -60,22 +61,39 @@ export function isValidWebhookSignature(body, timestamp, signature, secret) {
 }
 // Webhook helper functions ends here
 
-// helper for entering a new record in notififications table
-export const createNotification = async (
-  receiver_address,
-  originator_address,
-  status,
-  trade_id,
-  proposal_id = null
-) => {
-  await db.notifications.create({
-    receiver_address,
+// Helper for entering a new record in notifications table
+// Hint: Considering the default notification type is private swap
+// Note: init_address --> User who perform some action on swap
+// Note: accept_address --> User who receives notification
+
+
+/**
+ * @typedef {Object} CreateNotificationInput
+ * @property {string} originator_address - User who performs some action on swap
+ * @property {string} receiver_address - User who receives the notification
+ * @property {string} trade_id - The trade ID
+ * @property {string} [open_trade_id] - Optional, defaults to null
+ * @property {number} swap_mode - Defaults to PRIVATE
+ * @property {number} status - The notification status
+ */
+
+
+/**
+ * Creates a new notification record in the database.
+ * @param {CreateNotificationInput} input - The input object
+ */
+export const createNotification = async ({ originator_address, receiver_address, trade_id, open_trade_id = null, swap_mode = SwapMode.PRIVATE, status }) => {
+  const notificationRes = await db.notifications.create({
     originator_address,
-    status,
+    receiver_address,
     trade_id,
+    open_trade_id,
     read: false,
-    proposal_id
+    status,
+    swap_mode
   });
+
+  logger.info("New notification created: " + notificationRes.id);
 };
 
 // Helper function for creating new smart wallet against a wallet id

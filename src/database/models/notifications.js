@@ -1,5 +1,5 @@
-"use strict"
-const { Model, DataTypes } = require("sequelize")
+"use strict";
+const { Model, DataTypes } = require("sequelize");
 
 module.exports = (sequelize) => {
     class Notifications extends Model {
@@ -41,7 +41,7 @@ module.exports = (sequelize) => {
                 type: DataTypes.BOOLEAN,
                 allowNull: false
             },
-            proposal_id: {
+            open_trade_id: {
                 type: DataTypes.STRING,
                 allowNull: true
             },
@@ -54,7 +54,7 @@ module.exports = (sequelize) => {
             sequelize,
             modelName: "Notifications"
         }
-    )
+    );
 
-    return Notifications
-}
+    return Notifications;
+};
