@@ -44,6 +44,10 @@ module.exports = (sequelize) => {
             proposal_id: {
                 type: DataTypes.STRING,
                 allowNull: true
+            },
+            swap_mode: {
+                type: DataTypes.INTEGER,
+                allowNull: true
             }
         },
         {
