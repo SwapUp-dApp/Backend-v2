@@ -72,6 +72,7 @@ const dbConfig = {
     seederStorage: "json",
     seederStoragePath: "sequelizeData.json",
   },
+
 };
 
 module.exports = dbConfig[swapupEnvironmentKey];
