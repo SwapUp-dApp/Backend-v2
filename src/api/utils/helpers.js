@@ -1,13 +1,15 @@
-const crypto = require('crypto');
-import logger from '../../logger';
-import db from "../../database/models";
-import Environment from '../../config';
-import { getContract, sendTransaction } from 'thirdweb';
-import { addAdmin } from 'thirdweb/extensions/erc4337';
-import { privateKeyToAccount, smartWallet } from 'thirdweb/wallets';
-import { Wallet } from 'ethers';
-import { currentChain, thirdWebClient } from '../../utils/thirdwebHelpers';
-import { SwapMode } from './constants';
+const crypto = require("crypto")
+import logger from "../../logger"
+import db from "../../database/models"
+import Environment from "../../config"
+import { getContract, sendTransaction } from "thirdweb"
+import { addAdmin } from "thirdweb/extensions/erc4337"
+import { privateKeyToAccount, smartWallet } from "thirdweb/wallets"
+import { Wallet } from "ethers"
+import { currentChain, thirdWebClient } from "../../utils/thirdwebHelpers"
+import { SwapMode } from "./constants"
+import { DefaultAzureCredential } from "@azure/identity"
+import { CryptographyClient, KeyClient } from "@azure/keyvault-keys"
 
 // const fs = require('fs');
 // const path = require('path');
@@ -28,36 +30,36 @@ import { SwapMode } from './constants';
 
 export function tryParseJSON(jsonString) {
   try {
-    const parsed = JSON.parse(jsonString);
-    return parsed;
+    const parsed = JSON.parse(jsonString)
+    return parsed
   } catch (err) {
-    return jsonString; // Return original string if parsing fails
+    return jsonString // Return original string if parsing fails
   }
 }
 
 // Webhook helper functions starts here
 
-export const isExpiredWebhook = (timestamp, expirationInSeconds,) => {
-  const currentTime = Math.floor(Date.now() / 1000);
-  return currentTime - parseInt(timestamp) > expirationInSeconds;
-};
+export const isExpiredWebhook = (timestamp, expirationInSeconds) => {
+  const currentTime = Math.floor(Date.now() / 1000)
+  return currentTime - parseInt(timestamp) > expirationInSeconds
+}
 
 export function isValidWebhookSignature(body, timestamp, signature, secret) {
-  const dataToSign = `${timestamp}.${JSON.stringify(body)}`;
-  logger.info("dataToSign: ", dataToSign);
+  const dataToSign = `${timestamp}.${JSON.stringify(body)}`
+  logger.info("dataToSign: ", dataToSign)
 
   // Generate the HMAC SHA-256 signature
   const expectedSignature = crypto
-    .createHmac('sha256', secret)
+    .createHmac("sha256", secret)
     .update(dataToSign)
-    .digest('hex');
+    .digest("hex")
 
-  logger.info('expectedSignature: ', expectedSignature);
+  logger.info("expectedSignature: ", expectedSignature)
 
   return crypto.timingSafeEqual(
     Buffer.from(expectedSignature),
-    Buffer.from(signature),
-  );
+    Buffer.from(signature)
+  )
 }
 // Webhook helper functions ends here
 
@@ -65,7 +67,6 @@ export function isValidWebhookSignature(body, timestamp, signature, secret) {
 // Hint: Considering the default notification type is private swap
 // Note: init_address --> User who perform some action on swap
 // Note: accept_address --> User who receives notification
-
 
 /**
  * @typedef {Object} CreateNotificationInput
@@ -77,12 +78,18 @@ export function isValidWebhookSignature(body, timestamp, signature, secret) {
  * @property {number} status - The notification status
  */
 
-
 /**
  * Creates a new notification record in the database.
  * @param {CreateNotificationInput} input - The input object
  */
-export const createNotification = async ({ originator_address, receiver_address, trade_id, open_trade_id = null, swap_mode = SwapMode.PRIVATE, status }) => {
+export const createNotification = async ({
+  originator_address,
+  receiver_address,
+  trade_id,
+  open_trade_id = null,
+  swap_mode = SwapMode.PRIVATE,
+  status,
+}) => {
   const notificationRes = await db.notifications.create({
     originator_address,
     receiver_address,
@@ -90,24 +97,24 @@ export const createNotification = async ({ originator_address, receiver_address,
     open_trade_id,
     read: false,
     status,
-    swap_mode
-  });
+    swap_mode,
+  })
 
-  logger.info("New notification created: " + notificationRes.id);
-};
+  logger.info("New notification created: " + notificationRes.id)
+}
 
 // Helper function for creating new smart wallet against a wallet id
 export const createOrGetSmartAccount = async (walletId) => {
   // Find the user based on the wallet ID
   const user = await db.users.findOne({
-    where: { wallet: walletId }
-  });
+    where: { wallet: walletId },
+  })
 
   if (!user) {
-    throw new Error(`User with wallet ID ${walletId} not found.`);
+    throw new Error(`User with wallet ID ${walletId} not found.`)
   }
 
-  let personalAccount, newSmartWallet, smartAccount;
+  let personalAccount, newSmartWallet, smartAccount
 
   // Check if the smart account already exists in the user's data
   if (user.smartAccount && user.privateKey) {
@@ -115,52 +122,52 @@ export const createOrGetSmartAccount = async (walletId) => {
     personalAccount = privateKeyToAccount({
       client: thirdWebClient,
       privateKey: user.privateKey,
-    });
+    })
 
     // Create a new smart wallet
     newSmartWallet = smartWallet({
       chain: currentChain,
       sponsorGas: true,
-    });
+    })
 
     // Connect to the existing smart account
     smartAccount = await newSmartWallet.connect({
       client: thirdWebClient,
       personalAccount,
-    });
+    })
 
-    return { smartAccount, newSmartWallet }; // Return the connected smart account
+    return { smartAccount, newSmartWallet } // Return the connected smart account
   }
 
   // If no smart account exists, create a new one
-  const generatedPrivateKey = Wallet.createRandom().privateKey;
+  const generatedPrivateKey = Wallet.createRandom().privateKey
   personalAccount = privateKeyToAccount({
     client: thirdWebClient,
     privateKey: generatedPrivateKey,
-  });
+  })
 
   // Configure the new smart wallet
   newSmartWallet = smartWallet({
     chain: currentChain,
     sponsorGas: true,
-  });
+  })
 
   // Connect to the new smart account
   smartAccount = await newSmartWallet.connect({
     client: thirdWebClient,
     personalAccount,
-  });
+  })
 
   // Save the new smart account and private key to the user's record
   if (smartAccount.address && generatedPrivateKey) {
     await user.update({
       privateKey: generatedPrivateKey,
       smartAccount: smartAccount.address,
-    });
+    })
   }
 
   // Define admin addresses to be added
-  const adminAddresses = [walletId, Environment.SWAPUP_TREASURY_SMART_ACCOUNT]; // User's walletId and Swapup treasury wallet
+  const adminAddresses = [walletId, Environment.SWAPUP_TREASURY_SMART_ACCOUNT] // User's walletId and Swapup treasury wallet
 
   // Adding admins to the smart wallet
   try {
@@ -173,29 +180,46 @@ export const createOrGetSmartAccount = async (walletId) => {
         }),
         account: smartAccount,
         adminAddress,
-      });
+      })
 
       // logger.info(`Adding admin: ${adminAddress}`, adminTransaction);
 
       return await sendTransaction({
         transaction: adminTransaction,
         account: smartAccount,
-      });
-    };
+      })
+    }
 
     // Add admin accounts
     if (walletId === Environment.SWAPUP_TREASURY_SMART_ACCOUNT) {
-      const result = await addAdminToSmartWallet(walletId);
-      logger.info(`Admin ${walletId} added: `, result);
+      const result = await addAdminToSmartWallet(walletId)
+      logger.info(`Admin ${walletId} added: `, result)
     } else {
       for (const adminAddress of adminAddresses) {
-        const result = await addAdminToSmartWallet(adminAddress);
-        logger.info(`Admin ${adminAddress} added: `, result);
+        const result = await addAdminToSmartWallet(adminAddress)
+        logger.info(`Admin ${adminAddress} added: `, result)
       }
     }
   } catch (error) {
-    logger.error(`Admin not added: ${error.message || error}`);
+    logger.error(`Admin not added: ${error.message || error}`)
   }
 
-  return { smartAccount, newSmartWallet }; // Return the newly connected smart account
-};
+  return { smartAccount, newSmartWallet } // Return the newly connected smart account
+}
+
+export const generateAddressBuffer = async (address) => {
+  try {
+    const vaultUrl = `https://${process.env.VAULT_NAME}.vault.azure.net`
+    // Authenticate using DefaultAzureCredential
+    const credential = new DefaultAzureCredential()
+    const keyClient = new KeyClient(vaultUrl, credential)
+    const key = await keyClient.getKey(process.env.KEY_NAME)
+    // Create a CryptographyClient to handle encryption
+    const cryptoClient = new CryptographyClient(key.id, credential)
+    // encryption
+    const addressBuffer = Buffer.from(address, "utf-8")
+    return addressBuffer
+  } catch (err) {
+    console.error(err)
+  }
+}
