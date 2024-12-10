@@ -8,6 +8,8 @@ import { privateKeyToAccount, smartWallet } from 'thirdweb/wallets';
 import { Wallet } from 'ethers';
 import { currentChain, thirdWebClient } from '../../utils/thirdwebHelpers';
 import { SwapMode } from './constants';
+import { getAlchemy } from '../../utils/alchemy';
+import { Utils } from 'alchemy-sdk';
 
 // const fs = require('fs');
 // const path = require('path');
@@ -198,4 +200,39 @@ export const createOrGetSmartAccount = async (walletId) => {
   }
 
   return { smartAccount, newSmartWallet }; // Return the newly connected smart account
+};
+
+export const getSubscriptionTokenBalance = async (walletAddress) => {
+  const subscriptionToken = await db.subscriptionTokens.findOne({
+    where: { chainId: Environment.NETWORK_ID },
+  });
+
+  if (!subscriptionToken) {
+    throw new Error("Subscription token not found");
+  }
+
+  let alchemyInstance = getAlchemy();
+  const subscriptionTokenBalances = await alchemyInstance.core.getTokenBalances(walletAddress, [subscriptionToken.address]);
+
+  let computedResult = {
+    address: subscriptionToken.address,
+    chainId: subscriptionToken.chainId || Environment.NETWORK_ID,
+    name: subscriptionToken.name,
+    symbol: subscriptionToken.symbol,
+    balance: 0,
+    usdBalance: 0,
+    iconUrl: subscriptionToken.iconUrl,
+    tradeCharges: subscriptionToken.tradeCharges,
+  };
+
+  if (subscriptionTokenBalances && subscriptionTokenBalances.tokenBalances.length > 0) {
+    const balance = Number(Utils.formatEther(subscriptionTokenBalances.tokenBalances[0].tokenBalance));
+    computedResult = {
+      ...computedResult,
+      balance,
+      usdBalance: balance * Number(subscriptionToken.usdAmount),
+    };
+  }
+
+  return computedResult;
 };

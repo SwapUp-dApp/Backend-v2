@@ -5,7 +5,8 @@ import { sendTransaction, getContract, ZERO_ADDRESS, prepareContractCall, toWei,
 import { currentChain, thirdWebClient } from "../../utils/thirdwebHelpers";
 import { SUE_SWAP_CANCEL_ACTION, SUE_SWAP_COMPLETE_ACTION_STRING, SwapMode, SwapModeString } from "../utils/constants";
 import db from "../../database/models";
-import { createOrGetSmartAccount } from "../utils/helpers";
+import { createOrGetSmartAccount, getSubscriptionTokenBalance } from "../utils/helpers";
+import { transfer } from "thirdweb/extensions/erc20";
 
 
 async function create_swap(req, res) {
@@ -14,6 +15,11 @@ async function create_swap(req, res) {
     const { signerAddress, initiatorAddress, responderAddress, initiatorAssets, responderAssets, signature, userSignMessage, tradeId, swapMode } = req.body;
 
     const { smartAccount, newSmartWallet } = await createOrGetSmartAccount(walletId);
+    const subscriptionToken = await getSubscriptionTokenBalance(smartAccount.address);
+
+    if (subscriptionToken.balance < subscriptionToken.tradeCharges) {
+      throw new CustomError(400, "Insufficient Subscription Token Balance");
+    }
 
     const swapupContract = getContract({
       address: Environment.SWAPUP_CONTRACT,
@@ -21,7 +27,7 @@ async function create_swap(req, res) {
       chain: currentChain,
     });
 
-    const { formattedInitAssets, formattedAcceptAssets } = await getFormattedAssetsBySwap(smartAccount, initiatorAssets, responderAssets);
+    const { formattedInitAssets, formattedAcceptAssets } = await getFormattedAssetsBySwap(initiatorAssets, responderAssets);
 
     // logger.info("UnFormatted init assets: ", initiatorAssets);
     // logger.info("UnFormatted accept assets: ", responderAssets);
@@ -52,13 +58,15 @@ async function create_swap(req, res) {
 
     // Log the transaction and respond with success
     logger.info(`Swap create response:`, transactionRes);
+    // Deducting the trade token charges - transferring back to treasury smart wallet
+    await deductTradeTokenCharges(smartAccount, walletId, subscriptionToken.address, subscriptionToken.tradeCharges);
 
     await newSmartWallet.disconnect();
 
     return res.status(201).json({
       success: true,
       message: `Successfully created swap`,
-      transaction: transactionRes,
+      transaction: { ...transactionRes, TokenCharged: subscriptionToken.tradeCharges },
     });
   } catch (err) {
     handleError(res, err, "create_swap: error");
@@ -72,13 +80,18 @@ async function counter_swap(req, res) {
 
     const { smartAccount, newSmartWallet } = await createOrGetSmartAccount(walletId);
 
+    const subscriptionToken = await getSubscriptionTokenBalance(smartAccount.address);
+    if (subscriptionToken.balance < subscriptionToken.tradeCharges) {
+      throw new CustomError(400, "Insufficient Subscription Token Balance");
+    }
+
     const swapupContract = getContract({
       address: Environment.SWAPUP_CONTRACT,
       client: thirdWebClient,
       chain: currentChain,
     });
 
-    const { formattedInitAssets, formattedAcceptAssets } = await getFormattedAssetsBySwap(smartAccount, initiatorAssets, responderAssets);
+    const { formattedInitAssets, formattedAcceptAssets } = await getFormattedAssetsBySwap(initiatorAssets, responderAssets);
 
     const preparedTransaction = prepareContractCall({
       contract: swapupContract,
@@ -104,12 +117,15 @@ async function counter_swap(req, res) {
     // Log the transaction and respond with success
     logger.info(`Counter swap response:`, transactionRes);
 
+    // Deducting the trade token charges - transferring back to treasury smart wallet
+    await deductTradeTokenCharges(smartAccount, walletId, subscriptionToken.address, subscriptionToken.tradeCharges);
+
     await newSmartWallet.disconnect();
 
     return res.status(201).json({
       success: true,
       message: `Created counter swap successfully!`,
-      transaction: transactionRes,
+      transaction: { ...transactionRes, TokenCharged: subscriptionToken.tradeCharges },
     });
   } catch (err) {
     handleError(res, err, "counter_swap: error");
@@ -123,13 +139,18 @@ async function propose_swap(req, res) {
 
     const { smartAccount, newSmartWallet } = await createOrGetSmartAccount(walletId);
 
+    const subscriptionToken = await getSubscriptionTokenBalance(smartAccount.address);
+    if (subscriptionToken.balance < subscriptionToken.tradeCharges) {
+      throw new CustomError(400, "Insufficient Subscription Token Balance");
+    }
+
     const swapupContract = getContract({
       address: Environment.SWAPUP_CONTRACT,
       client: thirdWebClient,
       chain: currentChain,
     });
 
-    const { formattedInitAssets, formattedAcceptAssets } = await getFormattedAssetsBySwap(smartAccount, initiatorAssets, responderAssets);
+    const { formattedInitAssets, formattedAcceptAssets } = await getFormattedAssetsBySwap(initiatorAssets, responderAssets);
 
     const preparedTransaction = prepareContractCall({
       contract: swapupContract,
@@ -155,12 +176,15 @@ async function propose_swap(req, res) {
     // Log the transaction and respond with success
     logger.info(`Propose swap response:`, transactionRes);
 
+    // Deducting the trade token charges - transferring back to treasury smart wallet
+    await deductTradeTokenCharges(smartAccount, walletId, subscriptionToken.address, subscriptionToken.tradeCharges);
+
     await newSmartWallet.disconnect();
 
     return res.status(201).json({
       success: true,
       message: `Successfully created swap`,
-      transaction: transactionRes,
+      transaction: { ...transactionRes, TokenCharged: subscriptionToken.tradeCharges },
     });
   } catch (err) {
     handleError(res, err, "propose_swap: error");
@@ -174,13 +198,18 @@ async function complete_swap(req, res) {
 
     const { smartAccount, newSmartWallet } = await createOrGetSmartAccount(walletId);
 
+    const subscriptionToken = await getSubscriptionTokenBalance(smartAccount.address);
+    if (subscriptionToken.balance < subscriptionToken.tradeCharges) {
+      throw new CustomError(400, "Insufficient Subscription Token Balance");
+    }
+
     const swapupContract = getContract({
       address: Environment.SWAPUP_CONTRACT,
       client: thirdWebClient,
       chain: currentChain,
     });
 
-    const { formattedInitAssets, formattedAcceptAssets } = await getFormattedAssetsBySwap(smartAccount, initiatorAssets, responderAssets);
+    const { formattedInitAssets, formattedAcceptAssets } = await getFormattedAssetsBySwap(initiatorAssets, responderAssets);
 
     const preparedTransaction = prepareContractCall({
       contract: swapupContract,
@@ -206,12 +235,16 @@ async function complete_swap(req, res) {
 
     // Log the transaction and respond with success
     logger.info(`Swap complete response:`, transactionRes);
+
+    // Deducting the trade token charges - transferring back to treasury smart wallet
+    await deductTradeTokenCharges(smartAccount, walletId, subscriptionToken.address, subscriptionToken.tradeCharges);
+
     await newSmartWallet.disconnect();
 
     return res.status(201).json({
       success: true,
       message: `Swap completed successfully.`,
-      transaction: transactionRes,
+      transaction: { ...transactionRes, TokenCharged: subscriptionToken.tradeCharges },
     });
   } catch (err) {
     handleError(res, err, "complete_swap: error");
@@ -225,13 +258,18 @@ async function cancel_swap(req, res) {
 
     const { smartAccount, newSmartWallet } = await createOrGetSmartAccount(walletId);
 
+    const subscriptionToken = await getSubscriptionTokenBalance(smartAccount.address);
+    if (subscriptionToken.balance < subscriptionToken.tradeCharges) {
+      throw new CustomError(400, "Insufficient Subscription Token Balance");
+    }
+
     const swapupContract = getContract({
       address: Environment.SWAPUP_CONTRACT,
       client: thirdWebClient,
       chain: currentChain,
     });
 
-    const { formattedInitAssets, formattedAcceptAssets } = await getFormattedAssetsBySwap(smartAccount, initiatorAssets, responderAssets);
+    const { formattedInitAssets, formattedAcceptAssets } = await getFormattedAssetsBySwap(initiatorAssets, responderAssets);
 
     let cancelType, swapId, receiverAddress;
 
@@ -274,12 +312,16 @@ async function cancel_swap(req, res) {
 
     // Log the transaction and respond with success
     logger.info(`Cancel swap response:`, transactionRes);
+
+    // Deducting the trade token charges - transferring back to treasury smart wallet
+    await deductTradeTokenCharges(smartAccount, walletId, subscriptionToken.address, subscriptionToken.tradeCharges);
+
     await newSmartWallet.disconnect();
 
     return res.status(201).json({
       success: true,
       message: `Swap canceled successfully.`,
-      transaction: transactionRes,
+      transaction: { ...transactionRes, TokenCharged: subscriptionToken.tradeCharges },
     });
   } catch (err) {
     handleError(res, err, "cancel_swap: error");
@@ -299,7 +341,7 @@ async function get_sign_message_string(req, res) {
       chain: currentChain
     });
 
-    const { formattedInitAssets, formattedAcceptAssets } = await getFormattedAssetsBySwap(smartAccount, initiatorAssets, responderAssets);
+    const { formattedInitAssets, formattedAcceptAssets } = await getFormattedAssetsBySwap(initiatorAssets, responderAssets);
 
     const result = await readContract({
       contract: swapupContract,
@@ -331,7 +373,7 @@ async function get_sign_message_string(req, res) {
 
 
 // Helper functions
-const getFormattedAssetsBySwap = async (smartAccount, initiatorAssets, responderAssets) => {
+const getFormattedAssetsBySwap = async (initiatorAssets, responderAssets) => {
   try {
     let formattedInitAssets = [];
     let formattedAcceptAssets = [];
@@ -360,6 +402,36 @@ const getFormattedAssetsBySwap = async (smartAccount, initiatorAssets, responder
     throw err;
   }
 
+};
+
+const deductTradeTokenCharges = async (userSmartAccount, ownerWalletId, tokenAddress, amount) => {
+  // Retrieve the ERC-20 token contract
+  const tokenContract = getContract({
+    address: tokenAddress,
+    client: thirdWebClient,
+    chain: currentChain,
+  });
+
+  // Check if the token contract was initialized correctly
+  if (!tokenContract) {
+    throw new Error("Token contract could not be initialized.");
+  }
+
+  // Call the extension function to prepare the transaction
+  const transaction = transfer({
+    contract: tokenContract,
+    to: Environment.SWAPUP_TREASURY_SMART_ACCOUNT,
+    amount: amount,
+  });
+
+  // Send the transfer transaction from the smart account
+  const transferResult = await sendTransaction({
+    transaction,
+    account: userSmartAccount,
+  });
+
+  // Log the transaction and respond with success
+  logger.info(`Trade tokens charges deducted from ${userSmartAccount.address} owned by ${ownerWalletId}`, transferResult);
 };
 
 export const smartContractController = {

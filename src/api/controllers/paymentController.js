@@ -117,7 +117,7 @@ async function payment_success_webhook(req, res) {
       customMessage = "Crypto purchase data saved.";
     }
 
-    // 3. Check for crypto payment
+    // 3. Check for subscription payment
     else if (paymentData.purchaseData.purchaseType === SUE_PurchaseType.SUBSCRIPTION) {
       // Create new record in Payments table with data in subscriptionPurchase column
       paymentRecordSavedResponse = await db.payments.create({
