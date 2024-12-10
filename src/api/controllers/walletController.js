@@ -3,6 +3,8 @@ import db from "../../database/models";
 import { getAlchemy } from "../../utils/alchemy";
 import Environment from "../../config";
 import logger from "../../logger";
+import { createOrGetSmartAccount, getSubscriptionTokenBalance } from "../utils/helpers";
+import { handleError } from "../../errors";
 
 const availableTokens = [
     {
@@ -437,8 +439,24 @@ async function token_breakdown_against_wallet(req, res) {
 
         res.send(responseTokenBreakdownList);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: `Error in tokenBreakdownAgainstWallet: ${err.message}` });
+        handleError(res, err, "token_breakdown_against_wallet: error");
+    }
+}
+
+async function get_subscription_token_balance(req, res) {
+    const walletId = req.params.walletId;
+
+    try {
+        const { smartAccount, newSmartWallet } = await createOrGetSmartAccount(walletId);
+        const balance = await getSubscriptionTokenBalance(smartAccount.address);
+        await newSmartWallet.disconnect();
+        return res.status(200).json({
+            success: true,
+            message: "Subscription tokens balance retrieved successfully",
+            data: balance,
+        });
+    } catch (err) {
+        handleError(res, err, "get_subscription_token_balance: error");
     }
 }
 
@@ -448,4 +466,4 @@ function test(req, res) {
     res.send({ network: Environment.NETWORK_ID });
 }
 
-export const walletController = { token_breakdown_against_wallet, test };
+export const walletController = { token_breakdown_against_wallet, test, get_subscription_token_balance };
