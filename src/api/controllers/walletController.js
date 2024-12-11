@@ -477,24 +477,29 @@ function test(req, res) {
 
 const encryptWalletAddress = async (req, res) => {
   try {
-    const addressBuffer = generateAddressBuffer(req.params.address)
-    const encryptionResult = await cryptoClient.encrypt(
-      "RSA-OAEP",
-      addressBuffer
+    const [addressBuffer, cryptoClient] = generateAddressBuffer(
+      req.params.address
     )
-    res.json({
-      success: true,
-      message: "encrypt_wallet_address",
-      data: encryptionResult.result.toString("base64"),
-    })
-  } catch (error) {
+    // const encryptionResult = await cryptoClient.encrypt(
+    //   "RSA-OAEP",
+    //   addressBuffer
+    // )
+    // res.json({
+    //   success: true,
+    //   message: "encrypt_wallet_address",
+    //   data: encryptionResult.result.toString("base64"),
+    // })
+    res.status(200)
+  } catch (err) {
     handleError(res, err, "encrypt_wallet_address error")
   }
 }
 
 const decryptWalletAddress = async (req, res) => {
   try {
-    const encryptedAddressBuffer = generateAddressBuffer(req.params.address)
+    const [encryptedAddressBuffer, cryptoClient] = generateAddressBuffer(
+      req.params.address
+    )
     const decryptionResult = await cryptoClient.decrypt(
       "RSA-OAEP",
       encryptedAddressBuffer
@@ -504,7 +509,7 @@ const decryptWalletAddress = async (req, res) => {
       message: "decrypt_wallet_address",
       data: decryptionResult.result.toString("utf-8"),
     })
-  } catch (error) {
+  } catch (err) {
     handleError(res, err, "decrypt_wallet_address error")
   }
 }

@@ -212,13 +212,13 @@ export const generateAddressBuffer = async (address) => {
     const vaultUrl = `https://${process.env.VAULT_NAME}.vault.azure.net`
     // Authenticate using DefaultAzureCredential
     const credential = new DefaultAzureCredential()
-    const keyClient = new KeyClient(vaultUrl, credential)
-    const key = await keyClient.getKey(process.env.KEY_NAME)
-    // Create a CryptographyClient to handle encryption
-    const cryptoClient = new CryptographyClient(key.id, credential)
-    // encryption
-    const addressBuffer = Buffer.from(address, "utf-8")
-    return addressBuffer
+    // const keyClient = new KeyClient(vaultUrl, credential)
+    // const key = await keyClient.getKey(process.env.ENCRYPT_KEY_NAME)
+    // // Create a CryptographyClient to handle encryption
+    // const cryptoClient = new CryptographyClient(key.id, credential)
+    // // encryption
+    // const addressBuffer = Buffer.from(address, "utf-8")
+    return [0, 1]
   } catch (err) {
     console.error(err)
   }
