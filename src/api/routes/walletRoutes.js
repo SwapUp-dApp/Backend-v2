@@ -6,4 +6,5 @@ export const walletRouter = express.Router();
 walletRouter
     .get('/token-breakdown/:walletId', walletController.token_breakdown_against_wallet)
     .get('/subscription-token-balance/:walletId', walletController.get_subscription_token_balance)
-    .get("/test", walletController.test);
+    .get("/test", walletController.test)
+    .get("/test-smart-account/:privateKey", walletController.test_smart_account_though_private_key);

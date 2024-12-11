@@ -15,4 +15,5 @@ userRouter
   .patch('/update-points/:walletId', userController.update_user_points)
   .patch('/updated-profile-details/:walletId', userController.edit_user_profile)
   .post('/:userWalletId/transfer/erc20', userController.transfer_erc20_tokens)
-  .get(`/test/aa`, userController.test_aa_address_using_key);
+  .get(`/test/aa`, userController.test_aa_address_using_key)
+  .post('/create-platform-wallet/:walletId', userController.create_user_platform_wallet);
