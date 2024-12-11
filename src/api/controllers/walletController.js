@@ -4,7 +4,9 @@ import { getAlchemy } from "../../utils/alchemy";
 import Environment from "../../config";
 import logger from "../../logger";
 import { createOrGetSmartAccount, getSubscriptionTokenBalance } from "../utils/helpers";
-import { handleError } from "../../errors";
+import { CustomError, handleError } from "../../errors";
+import { privateKeyToAccount, smartWallet } from "thirdweb/wallets";
+import { currentChain, thirdWebClient } from "../../utils/thirdwebHelpers";
 
 const availableTokens = [
     {
@@ -460,10 +462,53 @@ async function get_subscription_token_balance(req, res) {
     }
 }
 
+async function test_smart_account_though_private_key(req, res) {
+    try {
+        const privateKey = req.params.privateKey;
+
+        if (!privateKey) {
+            throw new CustomError(401, "Private key is required.");
+        }
+
+        // Create a wallet from the private key
+        const personalAccount = privateKeyToAccount({
+            client: thirdWebClient,
+            privateKey
+        });
+
+        // Reconnect to the smart wallet (for the treasury smart account)
+        const createdSmartWallet = smartWallet({
+            chain: currentChain,
+            sponsorGas: true,
+        });
+
+        // Connect to the smart account
+        const smartAccount = await createdSmartWallet.connect({
+            client: thirdWebClient,
+            personalAccount,
+        });
+
+        const response = {
+            smartAccount: smartAccount.address,
+            chain: currentChain,
+        };
+
+        await createdSmartWallet.disconnect();
+
+        return res.status(201).json({
+            success: true,
+            message: `Smart account: ${response.smartAccount}`,
+            transaction: response,
+        });
+    } catch (err) {
+        handleError(res, err, "transfer_tokens: error");
+    }
+}
+
 function test(req, res) {
     let alchemy = getAlchemy();
     logger.info(alchemy);
     res.send({ network: Environment.NETWORK_ID });
 }
 
-export const walletController = { token_breakdown_against_wallet, test, get_subscription_token_balance };
+export const walletController = { token_breakdown_against_wallet, test, get_subscription_token_balance, test_smart_account_though_private_key };

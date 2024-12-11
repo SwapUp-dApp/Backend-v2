@@ -76,6 +76,25 @@ async function create_user(req, res) {
   }
 }
 
+async function create_user_platform_wallet(req, res) {
+  try {
+    const walletId = req.params.walletId;
+
+    const { smartAccount, newSmartWallet } = await createOrGetSmartAccount(walletId);
+    const smartAccountAddress = smartAccount.address;
+    await newSmartWallet.disconnect();
+
+    return res.status(201).json({
+      success: true,
+      message: `New smart account created for user with wallet ID ${walletId}.`,
+      data: { smartAccount: smartAccountAddress }
+    });
+
+  } catch (err) {
+    handleError(res, err, "create_user_platform_wallet: error");
+  }
+}
+
 // To transfer ERC20 Tokens from users smart account --> swapup treasury smart account
 async function transfer_erc20_tokens(req, res) {
   try {
@@ -358,5 +377,6 @@ export const userController = {
   get_user_by_wallet,
   edit_user_profile,
   transfer_erc20_tokens,
-  test_aa_address_using_key
+  test_aa_address_using_key,
+  create_user_platform_wallet
 };

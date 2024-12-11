@@ -10,7 +10,7 @@ const swapupAvailbleChains = [
 ];
 
 const clientId = Environment.THIRDWEB_CLIENT_ID;
-const chainByEnvirnment = swapupAvailbleChains.find(chain => chain.id === Number(Environment.CHAIN_ID));
+const chainByEnvirnment = swapupAvailbleChains.find(chain => chain.id === Number(Environment.NETWORK_ID));
 
 export const thirdWebClient = createThirdwebClient({ clientId });
 export const currentChain = chainByEnvirnment ? chainByEnvirnment : baseSepolia;
