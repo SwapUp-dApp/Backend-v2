@@ -11,6 +11,7 @@ import { treasuryRouter } from "./treasuryRouter.js";
 import { smartContractRouter } from "./smartContractRouter.js";
 import { notificationRouter } from "./notificationRouter.js";
 import { manageRouter } from "./manageRouter.js";
+import { currenciesRouter } from "./currenciesRouter.js";
 
 const apiRouter = express.Router();
 
@@ -25,6 +26,7 @@ apiRouter
   .use("/treasury", treasuryRouter)
   .use("/smart-contract", smartContractRouter)
   .use("/notifications", notificationRouter)
-  .use("/manage", manageRouter);
+  .use("/manage", manageRouter)
+  .use("/currencies", currenciesRouter);
 
 export default apiRouter;
