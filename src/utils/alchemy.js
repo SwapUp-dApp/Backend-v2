@@ -8,6 +8,9 @@ const getCurrentNetwork = (networkId = 84532) => {
         case 1:
             currentNetwork = Network.ETH_MAINNET;
             break;
+        case 8453:
+            currentNetwork = Network.BASE_MAINNET;
+            break;
         case 84532:
             currentNetwork = Network.BASE_SEPOLIA;
             break;
