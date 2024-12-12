@@ -1,10 +1,11 @@
 import { createThirdwebClient } from "thirdweb";
-import { baseSepolia, sepolia, ethereum } from "thirdweb/chains";
+import { baseSepolia, sepolia, ethereum, base } from "thirdweb/chains";
 import Environment from "../config";
 
 
 const swapupAvailbleChains = [
   baseSepolia,
+  base,
   sepolia,
   ethereum
 ];
