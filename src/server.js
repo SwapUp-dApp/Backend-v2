@@ -9,7 +9,7 @@ import logger from "./logger/index.js";
 import { handleError, CustomError } from "./errors";
 
 const app = express();
-const port = Environment.PORT || 3000;
+const port = Environment.PORT || 8080;
 
 export const apiPayloadLimit = `${Environment.API_PAYLOAD_LIMIT || 500}kb`;
 
