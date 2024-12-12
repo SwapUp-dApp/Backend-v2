@@ -11,3 +11,5 @@ dist
 /logs
 .vscode/
 */vscode/*
+.env
+package-lock.json
