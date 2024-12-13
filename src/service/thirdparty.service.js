@@ -1,5 +1,6 @@
 import axios from 'axios';
 import Environment from '../config';
+import logger from '../logger';
 
 /*=== Namespace - endpoints start here ===*/
 const namespaceOffchainApi = axios.create({
@@ -31,7 +32,7 @@ const coinRankingApi = axios.create({
 coinRankingApi.interceptors.response.use(
   response => response,
   error => {
-    console.log(
+    logger.error(
       "Error in Response Interceptor:",
       JSON.stringify(error?.response || error?.message),
     );
@@ -40,7 +41,6 @@ coinRankingApi.interceptors.response.use(
 );
 
 export const getCoinRankingCurrenciesApi = (queryParams = {}) => {
-  console.log("queryParams: ", queryParams);
   const queryString = Object.entries(queryParams)
     .map(([key, value]) => {
       if (Array.isArray(value)) {
@@ -64,7 +64,7 @@ const baseBlockscoutApi = axios.create({
 baseBlockscoutApi.interceptors.response.use(
   response => response,
   error => {
-    console.log(
+    logger.error(
       "Error in Response Interceptor:",
       JSON.stringify(error?.response || error?.message),
     );

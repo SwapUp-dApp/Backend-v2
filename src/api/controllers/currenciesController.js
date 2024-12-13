@@ -9,7 +9,6 @@ import { additionalBaseTokenAddresses } from "../../constants/params";
 async function get_coin_ranking_currencies(req, res) {
   try {
     const queryParams = req.query;
-    console.log("queryParams", queryParams);
     const currenciesRes = await getCoinRankingCurrenciesApi(queryParams);
 
     return res.status(200).json({

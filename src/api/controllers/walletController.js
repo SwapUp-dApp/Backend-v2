@@ -8,6 +8,7 @@ import { CustomError, handleError } from "../../errors";
 import { privateKeyToAccount, smartWallet } from "thirdweb/wallets";
 import { currentChain, thirdWebClient } from "../../utils/thirdwebHelpers";
 import { getAvailableTokensList, getTokenSymbolsForWalletBreakdown } from "../../constants/params";
+import { getDecryptedPrivateKey, getEncryptedPrivateKey } from "../utils/encryption";
 
 
 async function token_breakdown_against_wallet(req, res) {
@@ -124,13 +125,36 @@ async function test_smart_account_though_private_key(req, res) {
 
         await createdSmartWallet.disconnect();
 
-        return res.status(201).json({
+        return res.status(200).json({
             success: true,
             message: `Smart account: ${response.smartAccount}`,
             transaction: response,
         });
     } catch (err) {
-        handleError(res, err, "transfer_tokens: error");
+        handleError(res, err, "test_smart_account_though_private_key: error");
+    }
+}
+
+async function test_encryption_decryption_by_private_key(req, res) {
+    try {
+        const privateKey = req.params.privateKey;
+
+        if (!privateKey) {
+            throw new CustomError(401, "Private key is required.");
+        }
+
+        const encryptedPrivateKey = await getEncryptedPrivateKey(privateKey);
+        const decryptedPrivateKey = await getDecryptedPrivateKey(encryptedPrivateKey);
+
+        const response = { privateKey, encryptedPrivateKey, decryptedPrivateKey };
+
+        return res.status(200).json({
+            success: true,
+            message: `Encryption and decryption successful and result is ${privateKey === decryptedPrivateKey}`,
+            transaction: response,
+        });
+    } catch (err) {
+        handleError(res, err, "test_encryption_decryption_by_private_key: error");
     }
 }
 
@@ -140,4 +164,10 @@ function test(req, res) {
     res.send({ network: Environment.NETWORK_ID });
 }
 
-export const walletController = { token_breakdown_against_wallet, test, get_subscription_token_balance, test_smart_account_though_private_key };
+export const walletController = {
+    token_breakdown_against_wallet,
+    get_subscription_token_balance,
+    test,
+    test_smart_account_though_private_key,
+    test_encryption_decryption_by_private_key
+};
