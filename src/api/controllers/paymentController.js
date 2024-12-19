@@ -1,11 +1,10 @@
-import { isExpiredWebhook, isValidWebhookSignature, tryParseJSON } from "../utils/helpers";
+import { isExpiredWebhook, isValidWebhookSignature } from "../utils/helpers";
 import { SUE_PurchaseType } from "../utils/constants";
-import { checkOffchainSubnameAvailabilityApi, mintOffchainSubnameApi } from "../../service/thirdparty.service";
-import { DTO_MintNewOffchainSubnamePayload } from "../utils/dtos";
 import db from "../../database/models";
 import Environment from "../../config";
 import logger from "../../logger";
 import { CustomError, handleError } from "../../errors";
+import { handleCheckSubnameAvailability, handleMintNewSubname } from "../utils/subnameMinting";
 
 const WEBHOOK_SECRET = Environment.THIRDWEB_PAYMENT_WEBHOOK_SECRET_KEY;
 
@@ -48,53 +47,23 @@ async function payment_success_webhook(req, res) {
       throw new CustomError(202, "Transaction is not completed yet!");
     }
 
-    const { environmentId, environmentKey } = paymentData.purchaseData.paymentTriggeredFrom;
-
-    //Same Environment - check if payment triggered from same environment, if not then return res with message
-    if ((Environment.NETWORK_ID !== Number(environmentId)) && (Environment.ENVIRONMENT_KEY !== environmentKey)) {
-      customMessage = `Transaction results triggered from ${environmentKey} environment cannot be saved in ${Environment.ENVIRONMENT_KEY} environment.`;
-
-      logger.warn(customMessage);
-
-      res.status(202).json({
-        success: true,
-        message: customMessage,
-        data: paymentRecordSavedResponse
-      });
-    }
-
-
     // 1. Check for subname payment
     if (paymentData.purchaseData.purchaseType === SUE_PurchaseType.SUBNAME) {
       const subnamePurchaseData = paymentData.purchaseData.details.subname;
 
       // If the Payment is completed but buyer does not own the subname
-      // Step-1: get the subname availability
-      let availabilityResponse;
       try {
-        availabilityResponse = await checkOffchainSubnameAvailabilityApi(subnamePurchaseData.subnameLabel, subnamePurchaseData.domain);
-        // logger.info("availabilityResponse.data: ", availabilityResponse.data);
+        // Step-1: get the subname availability
+        const isAvailable = await handleCheckSubnameAvailability(subnamePurchaseData.subnameLabel, subnamePurchaseData.domain);
+
+        // Step-2: If available, mint the subname for user
+        if (isAvailable) {
+          const mintRes = await handleMintNewSubname(subnamePurchaseData.subnameLabel, subnamePurchaseData.buyerAddress);
+          logger.info(`Webhook: User ${subnamePurchaseData.buyerAddress} has successfully minted ${subnamePurchaseData.subnameLabel}. `, mintRes);
+        }
+
       } catch (error) {
         logger.error("Error checking subname availability: ", error.message);
-      }
-
-      // Step-2: Check the subname availability and if available
-      if (availabilityResponse.data.isAvailable) {
-        // Step-3: If available mint this subname on behalf of buyer
-
-        const mintSubnamePayload = DTO_MintNewOffchainSubnamePayload;
-        mintSubnamePayload.address = subnamePurchaseData.buyerAddress;
-        mintSubnamePayload.label = subnamePurchaseData.subnameLabel;
-        mintSubnamePayload.domain = subnamePurchaseData.domain;
-
-        try {
-          const mintSubnameResponse = await mintOffchainSubnameApi(mintSubnamePayload);
-          if (mintSubnameResponse.data) {
-            logger.info("Manual subname minted on behalf of user: ", mintSubnameResponse.data);
-          }
-        } catch (error) {
-          logger.error("Error minting subname: ", error.message);
-        }
       }
 
       // Create new record in Payments table with data in subnamePurchase column

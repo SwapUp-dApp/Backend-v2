@@ -158,6 +158,29 @@ async function test_encryption_decryption_by_private_key(req, res) {
     }
 }
 
+async function get_smart_wallet_details(req, res) {
+    try {
+        const walletId = req.params.walletId;
+
+        const { smartAccount, newSmartWallet, decryptedPrivateKey } = await createOrGetSmartAccount(walletId);
+
+        const response = {
+            address: smartAccount.address,
+            decryptedPrivateKey
+        };
+
+        await newSmartWallet.disconnect();
+
+        return res.status(200).json({
+            success: true,
+            message: `Successfully retrieved smart wallet details`,
+            transaction: response,
+        });
+    } catch (err) {
+        handleError(res, err, "get_smart_wallet_details: error");
+    }
+}
+
 function test(req, res) {
     let alchemy = getAlchemy();
     logger.info(alchemy);
@@ -169,5 +192,6 @@ export const walletController = {
     get_subscription_token_balance,
     test,
     test_smart_account_though_private_key,
-    test_encryption_decryption_by_private_key
+    test_encryption_decryption_by_private_key,
+    get_smart_wallet_details
 };

@@ -150,7 +150,7 @@ export const createOrGetSmartAccount = async (walletId) => {
       personalAccount
     });
 
-    return { smartAccount, newSmartWallet }; // Return the connected smart account
+    return { smartAccount, newSmartWallet, decryptedPrivateKey }; // Return the connected smart account
   }
 
   // If no smart account exists, create a new one
@@ -231,7 +231,7 @@ export const createOrGetSmartAccount = async (walletId) => {
     logger.error(`Admin not added: ${error.message || error}`);
   }
 
-  return { smartAccount, newSmartWallet }; // Return the newly connected smart account
+  return { smartAccount, newSmartWallet, decryptedPrivateKey }; // Return the newly connected smart account
 };
 
 export const getSubscriptionTokenBalance = async (walletAddress) => {
