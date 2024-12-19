@@ -12,6 +12,7 @@ import { smartContractRouter } from "./smartContractRouter.js";
 import { notificationRouter } from "./notificationRouter.js";
 import { manageRouter } from "./manageRouter.js";
 import { currenciesRouter } from "./currenciesRouter.js";
+import { subnameRouter } from "./subnameRouter.js";
 
 const apiRouter = express.Router();
 
@@ -27,6 +28,7 @@ apiRouter
   .use("/smart-contract", smartContractRouter)
   .use("/notifications", notificationRouter)
   .use("/manage", manageRouter)
-  .use("/currencies", currenciesRouter);
+  .use("/currencies", currenciesRouter)
+  .use("/subname", subnameRouter);
 
 export default apiRouter;

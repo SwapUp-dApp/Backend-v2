@@ -1,12 +1,11 @@
-import Environment from "../../config";
-import { CustomError, handleError } from "../../errors";
+import { handleError } from "../../errors";
 import logger from "../../logger";
 
 
-import { smartWallet, privateKeyToAccount } from "thirdweb/wallets";
 import { sendTransaction, getContract } from "thirdweb";
 import { currentChain, thirdWebClient } from "../../utils/thirdwebHelpers";
 import { transfer } from "thirdweb/extensions/erc20";
+import { getTreasurySmartAccount } from "../utils/treasury";
 
 
 // To transfer ERC20 Tokens from swapup treasury smart account --> users smart account
@@ -14,29 +13,7 @@ async function transfer_erc20_tokens(req, res) {
   try {
     const { amountToTransfer, tokenAddress, transferToAddress } = req.body;
 
-    const { SWAPUP_TREASURY_API_KEY, SWAPUP_TREASURY_SMART_ACCOUNT } = Environment;
-
-    if (!SWAPUP_TREASURY_SMART_ACCOUNT || !SWAPUP_TREASURY_API_KEY) {
-      throw new CustomError(404, "SwapUp treasury smart account credentials not found.");
-    }
-
-    // Create a wallet from the private key
-    const personalAccount = privateKeyToAccount({
-      client: thirdWebClient,
-      privateKey: SWAPUP_TREASURY_API_KEY,
-    });
-
-    // Reconnect to the smart wallet (for the treasury smart account)
-    const createdSmartWallet = smartWallet({
-      chain: currentChain,
-      sponsorGas: true,
-    });
-
-    // Connect to the smart account
-    const smartAccount = await createdSmartWallet.connect({
-      client: thirdWebClient,
-      personalAccount,
-    });
+    const { smartAccount, createdSmartWallet } = await getTreasurySmartAccount();
 
     // Retrieve the ERC-20 token contract
     const tokenContract = getContract({
@@ -62,6 +39,9 @@ async function transfer_erc20_tokens(req, res) {
       transaction,
       account: smartAccount,
     });
+
+    // Disconnect the smart account
+    await createdSmartWallet.disconnect();
 
     // Log the transaction and respond with success
     logger.info(`Tokens transferred to ${amountToTransfer}`, transferResult);

@@ -12,5 +12,6 @@
   "20241118134156-add-column-to-table.js",
   "20241121084707-add-column-to-Notifications.js",
   "20241121094500-rename-proposal-column-in-notifications.js",
-  "20241210082956-create-subscription-tokens-table.js"
+  "20241210082956-create-subscription-tokens-table.js",
+  "20241219124746-create-subname-access-table.js"
 ]
