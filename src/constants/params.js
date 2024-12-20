@@ -1,3 +1,4 @@
+import { Network } from "alchemy-sdk";
 
 // Additional currencies to get from Blockscout on Base Mainnet
 export const additionalBaseTokenAddresses = [
@@ -454,3 +455,11 @@ export const getTokenSymbolsForWalletBreakdown = (chainId) => {
   }
   return tokenSymbols;
 };
+
+
+export const availableNetworks = [
+  { network: Network.ETH_MAINNET, key: 'ETH', name: 'Ethereum', id: 1 },
+  { network: Network.BASE_MAINNET, key: 'base', name: 'Base', id: 8453 },
+  { network: Network.BASE_SEPOLIA, key: 'base-sepolia', name: 'Base Sepolia', id: 84532 },
+  { network: Network.ETH_SEPOLIA, key: 'eth-sepolia', name: 'Sepolia', id: 11155111 },
+];

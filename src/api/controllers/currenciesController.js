@@ -39,7 +39,7 @@ async function get_currencies_by_chain_id(req, res) {
         // Step - 2: Get all available coins on base network
         const baseCurrenciesRes = await getCoinRankingCurrenciesApi({
           blockchains: ["base"],
-          limit: 100,
+          // limit: 100
         });
 
 
@@ -69,7 +69,7 @@ async function get_currencies_by_chain_id(req, res) {
       case 1:
         const ethereumCurrenciesRes = await getCoinRankingCurrenciesApi({
           blockchains: ["ethereum"],
-          limit: 100
+          // limit: 100
         });
         currenciesRes = ethereumCurrenciesRes.data.data.coins;
         break;
@@ -77,7 +77,7 @@ async function get_currencies_by_chain_id(req, res) {
       default:
         const defaultCurrenciesRes = await getCoinRankingCurrenciesApi({
           blockchains: ["ethereum"],
-          limit: 100
+          // limit: 100
         });
         currenciesRes = defaultCurrenciesRes.data.data.coins;
         break;
