@@ -12,6 +12,7 @@ import { SwapMode } from "./constants";
 import { getDecryptedPrivateKey, getEncryptedPrivateKey } from "./encryption";
 import { getAlchemy } from "../../utils/alchemy";
 import { Utils } from "alchemy-sdk";
+import { getCoinRankingCurrenciesApi } from "../../service/thirdparty.service";
 
 dotenv.config();
 
@@ -234,9 +235,9 @@ export const createOrGetSmartAccount = async (walletId) => {
   return { smartAccount, newSmartWallet, decryptedPrivateKey }; // Return the newly connected smart account
 };
 
-export const getSubscriptionTokenBalance = async (walletAddress) => {
+export const getSubscriptionTokenBalance = async (walletAddress, tokenAddress = "") => {
   const subscriptionToken = await db.subscriptionTokens.findOne({
-    where: { chainId: Environment.NETWORK_ID },
+    where: tokenAddress ? { address: tokenAddress } : { chainId: Environment.NETWORK_ID },
   });
 
   if (!subscriptionToken) {
@@ -267,4 +268,13 @@ export const getSubscriptionTokenBalance = async (walletAddress) => {
   }
 
   return computedResult;
+};
+
+export const getEthereumCurrencyToken = async () => {
+  const ethCurrencyRes = await getCoinRankingCurrenciesApi({
+    blockchains: ["ethereum"],
+    uuids: ["razxDUgYGNAdQ"],
+  });
+
+  return ethCurrencyRes.data.data.coins[0];
 };

@@ -1,4 +1,4 @@
-import { Network, Utils } from "alchemy-sdk";
+import { Utils } from "alchemy-sdk";
 import db from "../../database/models";
 import { getAlchemy } from "../../utils/alchemy";
 import Environment from "../../config";
@@ -7,7 +7,7 @@ import { createOrGetSmartAccount, getSubscriptionTokenBalance } from "../utils/h
 import { CustomError, handleError } from "../../errors";
 import { privateKeyToAccount, smartWallet } from "thirdweb/wallets";
 import { currentChain, thirdWebClient } from "../../utils/thirdwebHelpers";
-import { getAvailableTokensList, getTokenSymbolsForWalletBreakdown } from "../../constants/params";
+import { availableNetworks, getAvailableTokensList, getTokenSymbolsForWalletBreakdown } from "../../constants/params";
 import { getDecryptedPrivateKey, getEncryptedPrivateKey } from "../utils/encryption";
 
 
@@ -26,12 +26,7 @@ async function token_breakdown_against_wallet(req, res) {
         const erc20TokenBalances = await alchemyInstance.core.getTokenBalances(walletId, filteredErc20Tokens.map(t => t.address));
 
         // Step 3: Collect balances for Ethereum and other networks
-        const networks = [
-            { network: Network.ETH_MAINNET, key: 'ETH', name: 'Ethereum' },
-            { network: Network.BASE_MAINNET, key: 'base', name: 'Base' },
-            { network: Network.BASE_SEPOLIA, key: 'base-sepolia', name: 'Base Sepolia' },
-            { network: Network.ETH_SEPOLIA, key: 'eth-sepolia', name: 'Sepolia' }
-        ];
+        const networks = availableNetworks;
 
         const networkBalances = await Promise.all(networks.map(async ({ network, key, name }) => {
             const balance = await getAlchemy(network).core.getBalance(walletId, 'latest');

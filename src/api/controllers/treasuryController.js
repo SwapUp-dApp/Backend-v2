@@ -1,4 +1,4 @@
-import { handleError } from "../../errors";
+import { CustomError, handleError } from "../../errors";
 import logger from "../../logger";
 
 
@@ -6,6 +6,12 @@ import { sendTransaction, getContract } from "thirdweb";
 import { currentChain, thirdWebClient } from "../../utils/thirdwebHelpers";
 import { transfer } from "thirdweb/extensions/erc20";
 import { getTreasurySmartAccount } from "../utils/treasury";
+import { getAlchemy } from "../../utils/alchemy";
+import Environment from "../../config";
+import { Utils } from "alchemy-sdk";
+import db from "../../database/models";
+import { getEthereumCurrencyToken, getSubscriptionTokenBalance } from "../utils/helpers";
+import { availableNetworks, getAvailableTokensList } from "../../constants/params";
 
 
 // To transfer ERC20 Tokens from swapup treasury smart account --> users smart account
@@ -51,10 +57,77 @@ async function transfer_erc20_tokens(req, res) {
       transaction: transferResult,
     });
   } catch (err) {
-    handleError(res, err, "transfer_tokens: error");
+    handleError(res, err, "transfer_erc20_tokens: error");
+  }
+}
+
+async function smart_treasury_wallet_balance_check(req, res) {
+  try {
+    const { address } = req.query;
+
+    const treasuryWallet = Environment.SWAPUP_TREASURY_SMART_ACCOUNT;
+
+    if (!treasuryWallet) {
+      throw new CustomError(404, "SWAPUP_TREASURY_SMART_ACCOUNT not found in environment");
+    }
+
+    const alchemyInstance = getAlchemy();
+    const availableTokens = getAvailableTokensList(currentChain.id || Environment.NETWORK_ID);
+    let balanceRes, response, subscriptionToken;
+
+    if (address) {
+
+      try {
+        subscriptionToken = await db.subscriptionTokens.findOne({
+          where: { address }
+        });
+      } catch (error) {
+        logger.error("Error fetching subscription token:", error);
+      }
+
+      if (subscriptionToken) {
+        response = await getSubscriptionTokenBalance(treasuryWallet, subscriptionToken.address);
+      } else {
+        const balancesRes = await alchemyInstance.core.getTokenBalances(treasuryWallet, [address]);
+        const matchedErc20Token = availableTokens.find(token => token.address === address);
+        balanceRes = balancesRes.tokenBalances[0].tokenBalance;
+        response = {
+          ...matchedErc20Token,
+          balance: Number(Utils.formatEther(balanceRes))
+        };
+      }
+
+    } else {
+      let foundNetwork = availableNetworks.find(network => network.id === currentChain.id);
+      const ethTokenObject = availableTokens.find(token => token.id === foundNetwork.key);
+      let ethCurrencyToken;
+
+      try {
+        ethCurrencyToken = await getEthereumCurrencyToken();
+      } catch (error) {
+        logger.error("Error fetching currency token:", error);
+      }
+
+      balanceRes = await alchemyInstance.core.getBalance(treasuryWallet, 'latest');
+      response = {
+        ...ethTokenObject,
+        balance: Number(Utils.formatEther(balanceRes)),
+        usdBalance: ethCurrencyToken ? Number(Utils.formatEther(balanceRes)) * ethCurrencyToken.price : ''
+      };
+    }
+
+    logger.info(`Smart Treasury Wallet Balance Check: `, response.balance);
+    return res.status(200).json({
+      success: true,
+      message: `Successfully received balance of ${response.balance} ${response.symbol || ''}`,
+      data: { ...response },
+    });
+  } catch (err) {
+    handleError(res, err, "smart_treasury_wallet_balance_check: error");
   }
 }
 
 export const treasuryController = {
-  transfer_erc20_tokens
+  transfer_erc20_tokens,
+  smart_treasury_wallet_balance_check
 };
