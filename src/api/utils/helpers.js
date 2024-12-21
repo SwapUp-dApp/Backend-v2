@@ -13,6 +13,7 @@ import { getDecryptedPrivateKey, getEncryptedPrivateKey } from "./encryption";
 import { getAlchemy } from "../../utils/alchemy";
 import { Utils } from "alchemy-sdk";
 import { getCoinRankingCurrenciesApi } from "../../service/thirdparty.service";
+import { transfer } from "thirdweb/extensions/erc20";
 
 dotenv.config();
 
@@ -256,6 +257,7 @@ export const getSubscriptionTokenBalance = async (walletAddress, tokenAddress = 
     usdBalance: 0,
     iconUrl: subscriptionToken.iconUrl,
     tradeCharges: subscriptionToken.tradeCharges,
+    subnameCharges: subscriptionToken.subnameCharges
   };
 
   if (subscriptionTokenBalances && subscriptionTokenBalances.tokenBalances.length > 0) {
@@ -277,4 +279,34 @@ export const getEthereumCurrencyToken = async () => {
   });
 
   return ethCurrencyRes.data.data.coins[0];
+};
+
+export const deductSubscriptionTokenCharges = async (userSmartAccount, ownerWalletId, tokenAddress, amount, mode = "Trade") => {
+  // Retrieve the ERC-20 token contract
+  const tokenContract = getContract({
+    address: tokenAddress,
+    client: thirdWebClient,
+    chain: currentChain,
+  });
+
+  // Check if the token contract was initialized correctly
+  if (!tokenContract) {
+    throw new Error("Token contract could not be initialized.");
+  }
+
+  // Call the extension function to prepare the transaction
+  const transaction = transfer({
+    contract: tokenContract,
+    to: Environment.SWAPUP_TREASURY_SMART_ACCOUNT,
+    amount: amount,
+  });
+
+  // Send the transfer transaction from the smart account
+  const transferResult = await sendTransaction({
+    transaction,
+    account: userSmartAccount,
+  });
+
+  // Log the transaction and respond with success
+  logger.info(`${mode} tokens charges deducted from ${userSmartAccount.address} owned by ${ownerWalletId}`, transferResult);
 };

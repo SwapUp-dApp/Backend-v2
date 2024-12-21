@@ -1,5 +1,5 @@
 import { isExpiredWebhook, isValidWebhookSignature } from "../utils/helpers";
-import { SUE_PurchaseType } from "../utils/constants";
+import { SUE_PaymentMode, SUE_PurchaseType } from "../utils/constants";
 import db from "../../database/models";
 import Environment from "../../config";
 import logger from "../../logger";
@@ -68,8 +68,15 @@ async function payment_success_webhook(req, res) {
 
       // If the Payment is completed but buyer does not own the subname
       try {
+        // Add a delay of, e.g., 10 seconds
+        const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+        // Wait for the delay before proceeding
+        await delay(10000);
+
+
         // Step-1: get the subname availability
-        const isAvailable = await handleCheckSubnameAvailability(subnamePurchaseData.subnameLabel, subnamePurchaseData.domain);
+        const isAvailable = await handleCheckSubnameAvailability(subnamePurchaseData.subnameLabel, subnamePurchaseData.domain, SUE_PaymentMode.CRYPTO_OR_CARD);
 
         // Step-2: If available, mint the subname for user
         if (isAvailable) {
