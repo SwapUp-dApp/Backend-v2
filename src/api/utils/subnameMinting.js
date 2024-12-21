@@ -7,9 +7,29 @@ import Environment from "../../config";
 import { getContract, prepareContractCall, sendTransaction } from "thirdweb";
 import db from "../../database/models";
 import { CustomError } from "../../errors";
+import { SUE_PaymentMode } from "./constants";
+import { createOrGetSmartAccount, deductSubscriptionTokenCharges, getSubscriptionTokenBalance } from "./helpers";
 
 const computedChain = currentChain.testnet ? sepolia : ethereum;
 const LISTED_NAME = Environment.NAMESPACE_LISTED_ENS_NAME;
+
+const handleSubnameSubscriptionTokens = async (minterEOA, mode = "BALANCE_CHECK") => {
+  const { smartAccount, newSmartWallet } = await createOrGetSmartAccount(minterEOA);
+
+  const subscriptionToken = await getSubscriptionTokenBalance(smartAccount.address);
+
+  if (mode === "BALANCE_CHECK") {
+    if (subscriptionToken.balance < subscriptionToken.subnameCharges) {
+      throw new CustomError(400, "Insufficient Subscription Token Balance To Mint Subname");
+    }
+  }
+
+  if (mode === "TOKEN_DEDUCTION") {
+    await deductSubscriptionTokenCharges(smartAccount, minterEOA, subscriptionToken.address, subscriptionToken.subnameCharges, "Subname");
+  }
+
+  await newSmartWallet.disconnect();
+};
 
 export const getNamespaceClientAndListing = async (listedName = LISTED_NAME) => {
   // console.log("Listed name: ", LISTED_NAME);
@@ -31,6 +51,12 @@ export const handleCheckSubnameAvailability = async (subnameLabel, listedName = 
 };
 
 export const handleGetMintSubnameTransactionParams = async (subnameLabel, minterAddress, treasuryAddress) => {
+  // Check if the subname is available or not
+  const isAvailable = await handleCheckSubnameAvailability(subnameLabel);
+  if (!isAvailable) {
+    throw new CustomError(400, "Subname is already taken.");
+  }
+
   const { NamespaceClient, listing } = await getNamespaceClientAndListing();
 
   const foundToken = await db.subnameAccess.findOne({
@@ -43,22 +69,28 @@ export const handleGetMintSubnameTransactionParams = async (subnameLabel, minter
     throw new CustomError(404, `Subname access token not found for: ${Environment.SUBNAME_ACCESS_WALLET}, Chain ID: ${currentChain.id} and listed name: ${Environment.NAMESPACE_LISTED_ENS_NAME}`);
   }
 
-
   const transactionParams = await NamespaceClient.getMintTransactionParameters(listing, {
     minterAddress: treasuryAddress,
-    subnameLabel,
+    subnameLabel: subnameLabel,
     subnameOwner: minterAddress,
     token: foundToken.refreshToken
   });
 
-  if (transactionParams) { logger.info("Generated transaction params: ", transactionParams); }
+  if (transactionParams) { console.log("Generated transaction params: ", transactionParams); }
 
   return transactionParams;
 };
 
-export const handleMintNewSubname = async (subnameLabel, minterAddress) => {
+export const handleMintNewSubname = async (subnameLabel, minterAddress, paymentMode) => {
+
+  if (paymentMode === SUE_PaymentMode.SUBSCRIPTION_TOKENS) {
+    await handleSubnameSubscriptionTokens(minterAddress, "BALANCE_CHECK");
+  }
+
   const { smartAccount, createdSmartWallet } = await getTreasurySmartAccount();
-  const transactionParams = await handleGetMintSubnameTransactionParams(subnameLabel, minterAddress, smartAccount.address);
+  const treasuryAddress = smartAccount.address;
+
+  const transactionParams = await handleGetMintSubnameTransactionParams(subnameLabel, minterAddress, treasuryAddress);
   // const transactionParams = await handleGetMintSubnameTransactionParams("treasury", smartAccount.address); // for minting subname for teasury
 
   const namespaceContract = getContract({
@@ -83,6 +115,11 @@ export const handleMintNewSubname = async (subnameLabel, minterAddress) => {
     transaction: preparedTransaction,
     account: smartAccount
   });
+
+  // Deduct tokens from users smart wallet
+  if (paymentMode === SUE_PaymentMode.SUBSCRIPTION_TOKENS) {
+    await handleSubnameSubscriptionTokens(minterAddress, "TOKEN_DEDUCTION");
+  }
 
   // Disconnect the smart account
   await createdSmartWallet.disconnect();

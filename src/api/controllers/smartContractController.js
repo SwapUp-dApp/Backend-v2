@@ -5,7 +5,7 @@ import { sendTransaction, getContract, ZERO_ADDRESS, prepareContractCall, toWei,
 import { currentChain, thirdWebClient } from "../../utils/thirdwebHelpers";
 import { SUE_SWAP_CANCEL_ACTION, SUE_SWAP_COMPLETE_ACTION_STRING, SwapMode, SwapModeString } from "../utils/constants";
 import db from "../../database/models";
-import { createOrGetSmartAccount, getSubscriptionTokenBalance } from "../utils/helpers";
+import { createOrGetSmartAccount, deductSubscriptionTokenCharges, getSubscriptionTokenBalance } from "../utils/helpers";
 import { transfer } from "thirdweb/extensions/erc20";
 
 
@@ -59,7 +59,7 @@ async function create_swap(req, res) {
     // Log the transaction and respond with success
     logger.info(`Swap create response:`, transactionRes);
     // Deducting the trade token charges - transferring back to treasury smart wallet
-    await deductTradeTokenCharges(smartAccount, walletId, subscriptionToken.address, subscriptionToken.tradeCharges);
+    await deductSubscriptionTokenCharges(smartAccount, walletId, subscriptionToken.address, subscriptionToken.tradeCharges);
 
     await newSmartWallet.disconnect();
 
@@ -118,7 +118,7 @@ async function counter_swap(req, res) {
     logger.info(`Counter swap response:`, transactionRes);
 
     // Deducting the trade token charges - transferring back to treasury smart wallet
-    await deductTradeTokenCharges(smartAccount, walletId, subscriptionToken.address, subscriptionToken.tradeCharges);
+    await deductSubscriptionTokenCharges(smartAccount, walletId, subscriptionToken.address, subscriptionToken.tradeCharges);
 
     await newSmartWallet.disconnect();
 
@@ -177,7 +177,7 @@ async function propose_swap(req, res) {
     logger.info(`Propose swap response:`, transactionRes);
 
     // Deducting the trade token charges - transferring back to treasury smart wallet
-    await deductTradeTokenCharges(smartAccount, walletId, subscriptionToken.address, subscriptionToken.tradeCharges);
+    await deductSubscriptionTokenCharges(smartAccount, walletId, subscriptionToken.address, subscriptionToken.tradeCharges);
 
     await newSmartWallet.disconnect();
 
@@ -237,7 +237,7 @@ async function complete_swap(req, res) {
     logger.info(`Swap complete response:`, transactionRes);
 
     // Deducting the trade token charges - transferring back to treasury smart wallet
-    await deductTradeTokenCharges(smartAccount, walletId, subscriptionToken.address, subscriptionToken.tradeCharges);
+    await deductSubscriptionTokenCharges(smartAccount, walletId, subscriptionToken.address, subscriptionToken.tradeCharges);
 
     await newSmartWallet.disconnect();
 
@@ -314,7 +314,7 @@ async function cancel_swap(req, res) {
     logger.info(`Cancel swap response:`, transactionRes);
 
     // Deducting the trade token charges - transferring back to treasury smart wallet
-    await deductTradeTokenCharges(smartAccount, walletId, subscriptionToken.address, subscriptionToken.tradeCharges);
+    await deductSubscriptionTokenCharges(smartAccount, walletId, subscriptionToken.address, subscriptionToken.tradeCharges);
 
     await newSmartWallet.disconnect();
 
@@ -371,7 +371,6 @@ async function get_sign_message_string(req, res) {
   }
 }
 
-
 // Helper functions
 const getFormattedAssetsBySwap = async (initiatorAssets, responderAssets) => {
   try {
@@ -404,35 +403,6 @@ const getFormattedAssetsBySwap = async (initiatorAssets, responderAssets) => {
 
 };
 
-const deductTradeTokenCharges = async (userSmartAccount, ownerWalletId, tokenAddress, amount) => {
-  // Retrieve the ERC-20 token contract
-  const tokenContract = getContract({
-    address: tokenAddress,
-    client: thirdWebClient,
-    chain: currentChain,
-  });
-
-  // Check if the token contract was initialized correctly
-  if (!tokenContract) {
-    throw new Error("Token contract could not be initialized.");
-  }
-
-  // Call the extension function to prepare the transaction
-  const transaction = transfer({
-    contract: tokenContract,
-    to: Environment.SWAPUP_TREASURY_SMART_ACCOUNT,
-    amount: amount,
-  });
-
-  // Send the transfer transaction from the smart account
-  const transferResult = await sendTransaction({
-    transaction,
-    account: userSmartAccount,
-  });
-
-  // Log the transaction and respond with success
-  logger.info(`Trade tokens charges deducted from ${userSmartAccount.address} owned by ${ownerWalletId}`, transferResult);
-};
 
 export const smartContractController = {
   create_swap,

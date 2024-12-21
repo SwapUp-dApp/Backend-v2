@@ -1,18 +1,26 @@
 import { CustomError, handleError } from "../../errors";
 import logger from "../../logger";
+import { SUE_PaymentMode } from "../utils/constants";
 import { handleGetMintSubnameTransactionParams, handleMintNewSubname } from "../utils/subnameMinting";
 
 
 async function mint_subname(req, res) {
   try {
     const minterAddress = req.params.minterAddress;
-    const { subnameLabel } = req.body;
+    const { subnameLabel, paymentMode } = req.body;
 
-    if (!minterAddress || !subnameLabel) {
-      throw new CustomError(400, "Minter address and subname label are required.");
+    console.log("Payment Mode: ", paymentMode);
+    console.log("Subname Label: ", subnameLabel);
+
+    if (!minterAddress || !subnameLabel || !paymentMode) {
+      throw new CustomError(400, "minterAddress, subnameLabel and paymentMode are required.");
     }
 
-    const mintRes = await handleMintNewSubname(subnameLabel, minterAddress);
+    if (paymentMode !== SUE_PaymentMode.CRYPTO_OR_CARD && paymentMode !== SUE_PaymentMode.SUBSCRIPTION_TOKENS) {
+      throw new CustomError(400, `Only paymentMode allowed are CRYPTO_OR_CARD: ${SUE_PaymentMode.CRYPTO_OR_CARD} and SUBSCRIPTION_TOKENS: ${SUE_PaymentMode.SUBSCRIPTION_TOKENS}`);
+    }
+
+    const mintRes = await handleMintNewSubname(subnameLabel, minterAddress, paymentMode);
 
     // Log the transaction and respond with success
     logger.info(`User ${minterAddress} has successfully minted ${subnameLabel}.`);

@@ -5,10 +5,10 @@ import { CustomError, handleError } from "../../errors";
 // Manage subscription tokens table endpoint functions starts here
 async function add_new_subscription_token(req, res) {
   try {
-    const { address, name, symbol, iconUrl, chainId, usdAmount, tradeCharges } = req.body;
+    const { address, name, symbol, iconUrl, chainId, usdAmount, tradeCharges, subnameCharges } = req.body;
 
-    if (!address || !name || !symbol || !chainId || !usdAmount || !tradeCharges) {
-      throw new CustomError(404, "Missing required fields: address, name, symbol, chainId, usdAmount, tradeCharges");
+    if (!address || !name || !symbol || !chainId || !usdAmount || !tradeCharges || !subnameCharges) {
+      throw new CustomError(404, "Missing required fields: address, name, symbol, chainId, usdAmount, tradeCharges and subnameCharges");
     }
 
     const newToken = await db.subscriptionTokens.create({
@@ -19,6 +19,7 @@ async function add_new_subscription_token(req, res) {
       chainId,
       usdAmount,
       tradeCharges,
+      subnameCharges
     });
 
     logger.info("New subscription token added to the database: ", newToken);
@@ -36,7 +37,7 @@ async function add_new_subscription_token(req, res) {
 async function update_subscription_token(req, res) {
   try {
     const { id } = req.params; // UUID of the token
-    const { address, name, symbol, iconUrl, chainId, usdAmount, tradeCharges } = req.body;
+    const { address, name, symbol, iconUrl, chainId, usdAmount, tradeCharges, subnameCharges } = req.body;
 
     const token = await db.subscriptionTokens.findByPk(id);
 
@@ -52,6 +53,7 @@ async function update_subscription_token(req, res) {
       chainId,
       usdAmount,
       tradeCharges,
+      subnameCharges
     });
 
     logger.info("Subscription token updated successfully: ", updatedToken);

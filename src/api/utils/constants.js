@@ -41,8 +41,8 @@ export const NotificationStatus = {
     COMPLETED: 3,
     COUNTERED: 4,
     COUNTER_REJECTED: 5,
-    CANCELLED:6
-}
+    CANCELLED: 6
+};
 
 export const SUE_BlobPictureType = {
     AVATAR: 'profile-avatar',
@@ -61,4 +61,9 @@ export const SUE_PurchaseType = {
     CRYPTO: 1,
     SUBNAME: 2,
     SUBSCRIPTION: 3
+};
+
+export const SUE_PaymentMode = {
+    SUBSCRIPTION_TOKENS: 1,
+    CRYPTO_OR_CARD: 2
 };
