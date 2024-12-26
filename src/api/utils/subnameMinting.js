@@ -13,23 +13,6 @@ import { createOrGetSmartAccount, deductSubscriptionTokenCharges, getSubscriptio
 const computedChain = currentChain.testnet ? sepolia : ethereum;
 const LISTED_NAME = Environment.NAMESPACE_LISTED_ENS_NAME;
 
-const handleSubnameSubscriptionTokens = async (minterEOA, mode = "BALANCE_CHECK") => {
-  const { smartAccount, newSmartWallet } = await createOrGetSmartAccount(minterEOA);
-
-  const subscriptionToken = await getSubscriptionTokenBalance(smartAccount.address);
-
-  if (mode === "BALANCE_CHECK") {
-    if (subscriptionToken.balance < subscriptionToken.subnameCharges) {
-      throw new CustomError(400, "Insufficient Subscription Token Balance To Mint Subname");
-    }
-  }
-
-  if (mode === "TOKEN_DEDUCTION") {
-    await deductSubscriptionTokenCharges(smartAccount, minterEOA, subscriptionToken.address, subscriptionToken.subnameCharges, "Subname");
-  }
-
-  await newSmartWallet.disconnect();
-};
 
 export const getNamespaceClientAndListing = async (listedName = LISTED_NAME) => {
   // console.log("Listed name: ", LISTED_NAME);
@@ -83,8 +66,17 @@ export const handleGetMintSubnameTransactionParams = async (subnameLabel, minter
 
 export const handleMintNewSubname = async (subnameLabel, minterAddress, paymentMode) => {
 
+  let userSmartAccount, subscriptionToken;
+
+  // Check the payment mode and if it is subscription tokens, then check if the user has enough subscription tokens
   if (paymentMode === SUE_PaymentMode.SUBSCRIPTION_TOKENS) {
-    await handleSubnameSubscriptionTokens(minterAddress, "BALANCE_CHECK");
+
+    userSmartAccount = await createOrGetSmartAccount(minterAddress);
+    subscriptionToken = await getSubscriptionTokenBalance(userSmartAccount.smartAccount.address);
+
+    if (subscriptionToken.balance < subscriptionToken.subnameCharges) {
+      throw new CustomError(400, "Insufficient Subscription Token Balance To Mint Subname");
+    }
   }
 
   const { smartAccount, createdSmartWallet } = await getTreasurySmartAccount();
@@ -116,9 +108,10 @@ export const handleMintNewSubname = async (subnameLabel, minterAddress, paymentM
     account: smartAccount
   });
 
-  // Deduct tokens from users smart wallet
+  // Check the payment mode and if it is subscription tokens, then deduct the subscription tokens from the user's balance
   if (paymentMode === SUE_PaymentMode.SUBSCRIPTION_TOKENS) {
-    await handleSubnameSubscriptionTokens(minterAddress, "TOKEN_DEDUCTION");
+    await deductSubscriptionTokenCharges(userSmartAccount.smartAccount, minterAddress, subscriptionToken.address, subscriptionToken.subnameCharges, "Subname");
+    await userSmartAccount.newSmartWallet.disconnect();
   }
 
   // Disconnect the smart account

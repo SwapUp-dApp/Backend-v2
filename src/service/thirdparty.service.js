@@ -1,6 +1,7 @@
 import axios from 'axios';
 import Environment from '../config';
 import logger from '../logger';
+import { currentChain } from '../utils/thirdwebHelpers';
 
 /*=== Coin Ranking - endpoints start here ===*/
 const coinRankingApi = axios.create({
@@ -52,5 +53,28 @@ baseBlockscoutApi.interceptors.response.use(
 );
 
 export const getBaseBlockscoutTokenByAddressApi = (address) =>
-  baseBlockscoutApi.get(`/api/v2/tokens/${address}`)
+  baseBlockscoutApi.get(`/api/v2/tokens/${address}`);
 /*=== Block Scout - endpoints end here ===*/
+
+
+/*=== Namespace - endpoints start here ===*/
+const namespaceApi = axios.create({
+  baseURL: Environment.NAMESPACE_API_BASE_URL,
+  headers: { "Content-Type": "application/json" },
+});
+
+namespaceApi.interceptors.response.use(
+  response => response,
+  error => {
+    console.log(
+      "Error in Response Interceptor:",
+      JSON.stringify(error?.response || error?.message),
+    );
+    return Promise.reject(error);
+  }
+);
+
+export const getSubnameListedOnL2Api = () => {
+  return namespaceApi.get(`/api/v1/nodes/?network=${currentChain.testnet ? "baseSepolia" : "base"}&parentName=${Environment.NAMESPACE_LISTED_ENS_NAME}&pageSize=1500`);
+};
+/*=== Namespace - endpoints ends here ===*/
