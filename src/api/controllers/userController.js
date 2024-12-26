@@ -9,22 +9,10 @@ import { smartWallet, privateKeyToAccount } from "thirdweb/wallets";
 import { sendTransaction, getContract } from "thirdweb";
 import { currentChain, thirdWebClient } from "../../utils/thirdwebHelpers";
 import { transfer } from "thirdweb/extensions/erc20";
+import { getNFTCollectionsByWalletId } from "../utils/nft";
+import { Op, Sequelize } from "sequelize";
+import { getSubnameListedOnL2Api } from "../../service/thirdparty.service";
 
-async function list_all_users(req, res) {
-  try {
-    let usersData = await db.users.findAll(req.body);
-
-    if (usersData) {
-      res.json({
-        success: true,
-        message: "list_all_users",
-        data: usersData
-      });
-    }
-  } catch (err) {
-    handleError(res, err, "***list_all_users: error");
-  }
-}
 
 async function create_user(req, res) {
   try {
@@ -41,14 +29,15 @@ async function create_user(req, res) {
         points: JSON.stringify(points),
         social_links: JSON.stringify({ twitter: '', warpcast: '' }),
         tags: JSON.stringify(tags)
-      }
+      },
+      attributes: { exclude: ['twitter_access', 'privateKey'] }
     });
 
     // Format the user object before sending the response, excluding twitter_access
-    let { twitter_access, privateKey, ...restUserData } = user.dataValues;
-    let formattedUser = getFormattedUserDetails(restUserData);
+    let userData = user.dataValues;
+    let formattedUser = getFormattedUserDetails(userData);
 
-    if (created || (!restUserData.smartAccount && !privateKey)) {
+    if (created || (!userData.smartAccount && !privateKey)) {
       const { smartAccount, newSmartWallet } = await createOrGetSmartAccount(walletId);
       formattedUser = { ...formattedUser, smartAccount: smartAccount.address };
       await newSmartWallet.disconnect();
@@ -95,54 +84,6 @@ async function create_user_platform_wallet(req, res) {
   }
 }
 
-// To transfer ERC20 Tokens from users smart account --> swapup treasury smart account
-async function transfer_erc20_tokens(req, res) {
-  try {
-    const userWalletId = req.params.userWalletId;
-    const { amountToTransfer, tokenAddress } = req.body;
-
-    const { SWAPUP_TREASURY_SMART_ACCOUNT } = Environment;
-
-    const { smartAccount, newSmartWallet } = await createOrGetSmartAccount(userWalletId);
-
-    // Retrieve the ERC-20 token contract
-    const tokenContract = getContract({
-      address: tokenAddress,
-      client: thirdWebClient,
-      chain: currentChain,
-    });
-
-    // Check if the token contract was initialized correctly
-    if (!tokenContract) {
-      throw new Error("Token contract could not be initialized.");
-    }
-
-    // Call the extension function to prepare the transaction
-    const transaction = transfer({
-      contract: tokenContract,
-      to: SWAPUP_TREASURY_SMART_ACCOUNT,
-      amount: amountToTransfer,
-    });
-
-    // Send the transfer transaction from the smart account
-    const transferResult = await sendTransaction({
-      transaction,
-      account: smartAccount,
-    });
-
-    // Log the transaction and respond with success
-    logger.info(`Tokens transferred to ${SWAPUP_TREASURY_SMART_ACCOUNT}`, transferResult);
-    await newSmartWallet.disconnect();
-
-    return res.status(201).json({
-      success: true,
-      message: `Successfully transferred ${amountToTransfer} tokens to ${SWAPUP_TREASURY_SMART_ACCOUNT}`,
-      transaction: transferResult,
-    });
-  } catch (err) {
-    handleError(res, err, "transfer_tokens: error");
-  }
-}
 
 async function get_user_twitter_access_by_wallet(req, res) {
   const walletId = req.params.walletId;
@@ -223,7 +164,8 @@ async function get_user_by_wallet(req, res) {
 
     // Find the user based on the wallet ID
     const user = await db.users.findOne({
-      where: { wallet: walletId }
+      where: { wallet: walletId },
+      attributes: { exclude: ['twitter_access', 'privateKey'] }
     });
 
     if (!user) {
@@ -234,8 +176,8 @@ async function get_user_by_wallet(req, res) {
     }
 
     // Format the user object before sending the response, excluding twitter_access
-    const { twitter_access, privateKey, ...restUserData } = user.dataValues;
-    const formattedUser = getFormattedUserDetails(restUserData);
+    const userData = user.dataValues;
+    const formattedUser = getFormattedUserDetails(userData);
 
     // Send the formatted user data
     return res.status(200).json({
@@ -254,7 +196,10 @@ async function edit_user_profile(req, res) {
     const { title, description, social_links } = req.body;
 
     // Find the user by wallet ID
-    const user = await db.users.findOne({ where: { wallet: walletId } });
+    const user = await db.users.findOne({
+      where: { wallet: walletId },
+      attributes: { exclude: ['twitter_access', 'privateKey'] }
+    });
 
     if (!user) {
       return res.status(404).json({
@@ -279,8 +224,8 @@ async function edit_user_profile(req, res) {
     await user.save();
 
     // Format the user object for response, excluding twitter_access
-    const { twitter_access, ...restUserData } = user.dataValues;
-    const formattedUser = getFormattedUserDetails(restUserData);
+    const userData = user.dataValues;
+    const formattedUser = getFormattedUserDetails(userData);
 
     return res.status(200).json({
       success: true,
@@ -327,6 +272,187 @@ async function test_aa_address_using_key(req, res) {
   }
 }
 
+async function list_new_members(req, res) {
+  try {
+    // Fetch the latest 5 users ordered by createdAt in descending order
+    const latestUsers = await db.users.findAll({
+      order: [['createdAt', 'DESC']],
+      limit: 5,
+      attributes: { exclude: ['twitter_access', 'privateKey', 'points', 'tags', 'social_links', 'updatedAt', 'description'] }
+    });
+
+    if (!latestUsers || latestUsers.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No users found.",
+      });
+    }
+
+    // Fetch NFTs and collections for each user
+    const usersWithNFTs = await Promise.all(
+      latestUsers.map(async (user) => {
+        const formattedUser = getFormattedUserDetails(user.dataValues);
+        const avatar = formattedUser.images?.avatar || '';
+        delete formattedUser.images;
+
+        try {
+          // Fetch NFTs and collections for the user's wallet
+          const { nftCollections } = await getNFTCollectionsByWalletId(formattedUser.wallet);
+
+          // Prepare the list of three NFTs based on the collections
+          let nftProfiles = [];
+          const collectionKeys = Object.keys(nftCollections);
+
+          if (collectionKeys.length === 1) {
+            // Only one collection: Include all NFTs (up to 3)
+            nftProfiles = nftCollections[collectionKeys[0]].slice(0, 3);
+          } else if (collectionKeys.length === 2) {
+            // Two collections: Include two from one collection and one from the other
+            const firstCollectionNFTs = nftCollections[collectionKeys[0]].slice(0, 2);
+            const secondCollectionNFTs = nftCollections[collectionKeys[1]].slice(0, 1);
+            nftProfiles = [...firstCollectionNFTs, ...secondCollectionNFTs];
+          } else {
+            // Three or more collections: Include the first NFT from each collection
+            nftProfiles = collectionKeys.slice(0, 3).map((key) => nftCollections[key][0]);
+          }
+
+          // Fetch all matching subscription records and extract the first createdAt
+          const subscriptionRecords = await db.payments.findAll({
+            where: {
+              paidBy: formattedUser.wallet,
+              subscriptionPurchase: { [Op.ne]: null }
+            },
+            order: [["createdAt", "ASC"]],
+            attributes: ["createdAt"]
+          });
+
+          const membershipCreatedAt = subscriptionRecords.length > 0 ? subscriptionRecords[0].createdAt : '';
+
+          return { ...formattedUser, avatar, nftProfiles, totalCollections: collectionKeys.length, membershipCreatedAt };
+        } catch (err) {
+          // If NFT fetching fails, return the user without NFT details
+          logger.error(`Error fetching NFTs for wallet ${formattedUser.wallet}:`, err.message);
+          return { ...formattedUser, avatar, nftProfiles: [], totalCollections: 0, membershipCreatedAt };
+        }
+      })
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Successfully got new members data.",
+      data: usersWithNFTs
+    });
+
+  } catch (err) {
+    handleError(res, err, "list_new_members: error");
+  }
+}
+
+async function list_top_traders(req, res) {
+  try {
+
+    // Step 1: Query the swaps table to count completed swaps by init_address and accept_address
+    const initCounts = await db.swaps.findAll({
+      where: { status: 4 },
+      attributes: [
+        "init_address",
+        [Sequelize.fn("COUNT", Sequelize.col("init_address")), "swapCount"]
+      ],
+      group: ["init_address"]
+    });
+
+    const acceptCounts = await db.swaps.findAll({
+      where: { status: 4 },
+      attributes: [
+        "accept_address",
+        [Sequelize.fn("COUNT", Sequelize.col("accept_address")), "swapCount"]
+      ],
+      group: ["accept_address"]
+    });
+
+    // Step 2: Combine and aggregate counts
+    const addressCounts = {};
+
+    [...initCounts, ...acceptCounts].forEach((entry) => {
+      const address = entry.init_address || entry.accept_address;
+      const count = parseInt(entry.dataValues.swapCount, 10);
+
+      if (addressCounts[address]) {
+        addressCounts[address] += count;
+      } else {
+        addressCounts[address] = count;
+      }
+    });
+
+    // Step 3: Sort addresses by swap count and get the top 10
+    const topAddresses = Object.entries(addressCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([address, swapCount]) => ({ address, swapCount }));
+
+    // Step 4: Fetch user details from the users table
+    const userDetails = await db.users.findAll({
+      where: {
+        wallet: { [Op.in]: topAddresses.map((entry) => entry.address) }
+      },
+      attributes: ["wallet", "images", "title", "createdAt"]
+    });
+
+    let subnamesData;
+
+    try {
+      const subnameRes = await getSubnameListedOnL2Api();
+      subnamesData = subnameRes.data.items;
+    } catch (error) {
+      logger.error("Error fetching subnames:", error);
+      subnamesData = [];
+    }
+
+    // Step 6: Merge swap counts with user details
+    const responseData = await Promise.all(
+      topAddresses.map(async (entry) => {
+        const user = userDetails.find((u) => u.wallet === entry.address).dataValues;
+        const formattedUser = getFormattedUserDetails(user);
+
+        const foundSubnames = subnamesData.filter(item => item.owner.toLowerCase() === formattedUser.wallet.toLowerCase());
+
+        try {
+          const { nftCollections } = await getNFTCollectionsByWalletId(formattedUser.wallet);
+          return {
+            ...formattedUser,
+            wallet: user.wallet || entry.address,
+            totalSwaps: entry.swapCount,
+            totalCollections: Object.keys(nftCollections).length,
+            subname: foundSubnames.length > 0 ? foundSubnames[0].name : "",
+          };
+
+        } catch (error) {
+          logger.error(`Error fetching NFTs for wallet ${entry.address}:`, error.message);
+          return {
+            ...formattedUser,
+            wallet: user.wallet || entry.address,
+            totalSwaps: entry.swapCount,
+            totalCollections: 0,
+            subname: foundSubnames.length > 0 ? foundSubnames[0].name : "",
+          };
+        }
+
+
+      })
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Top 10 traders fetched successfully.",
+      data: responseData
+    });
+
+  } catch (err) {
+    handleError(res, err, "list_top_traders: error");
+  }
+}
+
+
 // Helper functions - start here
 async function updateUserPointsByWallet(walletId, pointsToAdd, keyType, defaultPointSystem) {
   // Fetch the user by walletId
@@ -359,24 +485,24 @@ async function updateUserPointsByWallet(walletId, pointsToAdd, keyType, defaultP
   return userPoints;
 }
 
-const getFormattedUserDetails = (restUserData) => {
+const getFormattedUserDetails = (userData) => {
   return ({
-    ...restUserData,
-    images: tryParseJSON(restUserData.images),
-    social_links: tryParseJSON(restUserData.social_links),
-    tags: tryParseJSON(restUserData.tags),
-    points: tryParseJSON(restUserData.points)
+    ...userData,
+    images: tryParseJSON(userData.images),
+    social_links: tryParseJSON(userData.social_links),
+    tags: tryParseJSON(userData.tags),
+    points: tryParseJSON(userData.points)
   });
 };
 
 export const userController = {
-  list_all_users,
   create_user,
   get_user_twitter_access_by_wallet,
   update_user_points,
   get_user_by_wallet,
   edit_user_profile,
-  transfer_erc20_tokens,
   test_aa_address_using_key,
-  create_user_platform_wallet
+  create_user_platform_wallet,
+  list_new_members,
+  list_top_traders
 };

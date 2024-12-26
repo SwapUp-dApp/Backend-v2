@@ -2,15 +2,7 @@ import Environment from "../../config/index.js";
 import { getAlchemy } from "../../utils/alchemy.js";
 import { handleError } from "../../errors";
 import logger from "../../logger/index.js";
-
-//import { testDb } from "../models/test.js";
-
-function test(req, res) {
-    //testDb();
-    res.send({ network: Environment.NETWORK_ID });
-    let alchemy = getAlchemy();
-    logger.info(alchemy);
-}
+import { getNFTCollectionsByWalletId } from "../utils/nft.js";
 
 // returns all the nfts owned by a wallet address
 async function list_all_wallet_nfts(req, res) {
@@ -35,32 +27,10 @@ async function list_all_wallet_nfts(req, res) {
 
 async function list_all_wallet_collection(req, res) {
     try {
-        let alchemy = getAlchemy();
-
-        let allNftsOwned = [];
-        let nftCollections = {};
+        const walletId = req.params.walletId;
         let collectionsResponse = [];
 
-        const nftsIterable = alchemy.nft.getNftsForOwnerIterator(req.params.walletId);
-
-        for await (const nft of nftsIterable) {
-            allNftsOwned.push(nft);
-        }
-
-        // Iterate over the NFTs array
-        allNftsOwned.forEach((nft) => {
-            // Get the contract address of the current NFT
-            const contractAddress = nft.contract.address;
-
-            // Check if this address already exists in the nftCollections object
-            if (!nftCollections[contractAddress]) {
-                // If not, initialize an empty array for this address
-                nftCollections[contractAddress] = [];
-            }
-
-            // Push the current NFT into the corresponding array
-            nftCollections[contractAddress].push(nft);
-        });
+        const { allNftsOwned, nftCollections } = await getNFTCollectionsByWalletId(walletId);
 
         Object.keys(nftCollections).forEach((collection, index) => {
             const firstNftOfCurrentCollections = nftCollections[collection][0];
@@ -81,8 +51,6 @@ async function list_all_wallet_collection(req, res) {
         });
 
         // Now nftCollections contains NFTs grouped by their collection address
-
-
         res.send(collectionsResponse);
 
     } catch (err) {
@@ -90,14 +58,8 @@ async function list_all_wallet_collection(req, res) {
     }
 }
 
-///register a new wallet account in the system
-async function register_a_wallet(req, res) {
-    //
-}
 
 export const nftController = {
-    test,
     list_all_wallet_nfts,
-    register_a_wallet,
     list_all_wallet_collection
 };
