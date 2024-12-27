@@ -6,8 +6,6 @@ import { blobController } from '../controllers/blobController';
 export const userRouter = express.Router();
 
 userRouter
-  .get('/new-members', userController.list_new_members)
-  .get('/top-traders', userController.list_top_traders)
   .get('/:walletId', userController.get_user_by_wallet)
   .post('/create/:walletId', userController.create_user)
   .get('/twitter-access/:walletId', userController.get_user_twitter_access_by_wallet)

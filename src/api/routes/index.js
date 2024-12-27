@@ -13,6 +13,7 @@ import { notificationRouter } from "./notificationRouter.js";
 import { manageRouter } from "./manageRouter.js";
 import { currenciesRouter } from "./currenciesRouter.js";
 import { subnameRouter } from "./subnameRouter.js";
+import { analyticsRouter } from "./analyticsRouter.js";
 
 const apiRouter = express.Router();
 
@@ -29,6 +30,7 @@ apiRouter
   .use("/notifications", notificationRouter)
   .use("/manage", manageRouter)
   .use("/currencies", currenciesRouter)
-  .use("/subname", subnameRouter);
+  .use("/subname", subnameRouter)
+  .use("/analytics", analyticsRouter);
 
 export default apiRouter;
