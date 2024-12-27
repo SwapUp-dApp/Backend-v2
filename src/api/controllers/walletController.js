@@ -176,11 +176,43 @@ async function get_smart_wallet_details(req, res) {
     }
 }
 
+async function get_wallet_tokens(req, res) {
+    try {
+        const walletId = req.params.walletId;
+        const alchemyInstance = getAlchemy();
+
+        const erc20TokenBalances = await alchemyInstance.core.getTokenBalances(walletId);
+
+        const responseFormat = await Promise.all(
+            erc20TokenBalances.tokenBalances.map(async (token) => {
+
+                const metadata = await alchemyInstance.core.getTokenMetadata(token.contractAddress);
+
+                return ({
+                    contract: token.contractAddress,
+                    balance: Number(Utils.formatEther(token.tokenBalance)),
+                    metadata
+                });
+            })
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: `Successfully retrieved wallet tokens details`,
+            data: responseFormat,
+        });
+    } catch (err) {
+        handleError(res, err, "get_wallet_tokens: error");
+    }
+}
+
 function test(req, res) {
     let alchemy = getAlchemy();
     logger.info(alchemy);
     res.send({ network: Environment.NETWORK_ID });
 }
+
+
 
 export const walletController = {
     token_breakdown_against_wallet,
@@ -188,5 +220,6 @@ export const walletController = {
     test,
     test_smart_account_though_private_key,
     test_encryption_decryption_by_private_key,
-    get_smart_wallet_details
+    get_smart_wallet_details,
+    get_wallet_tokens
 };
