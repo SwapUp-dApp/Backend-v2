@@ -6,6 +6,7 @@ import { getNFTCollectionsByWalletId } from "../utils/nft";
 import { Op, Sequelize } from "sequelize";
 import { getSubnameListedOnL2Api } from "../../service/thirdparty.service";
 import { getFormattedUserDetails } from "../utils/user";
+import { SwapStatus } from "../utils/constants";
 
 
 async function list_new_members(req, res) {
@@ -89,7 +90,7 @@ async function list_top_traders(req, res) {
 
     // Step 1: Query the swaps table to count completed swaps by init_address and accept_address
     const initCounts = await db.swaps.findAll({
-      where: { status: 4 },
+      where: { status: SwapStatus.COMPLETED },
       attributes: [
         "init_address",
         [Sequelize.fn("COUNT", Sequelize.col("init_address")), "swapCount"]
@@ -98,7 +99,7 @@ async function list_top_traders(req, res) {
     });
 
     const acceptCounts = await db.swaps.findAll({
-      where: { status: 4 },
+      where: { status: SwapStatus.COMPLETED },
       attributes: [
         "accept_address",
         [Sequelize.fn("COUNT", Sequelize.col("accept_address")), "swapCount"]
