@@ -69,7 +69,7 @@ async function list_new_members(req, res) {
         } catch (err) {
           // If NFT fetching fails, return the user without NFT details
           logger.error(`Error fetching NFTs for wallet ${formattedUser.wallet}:`, err.message);
-          return { ...formattedUser, avatar, nftProfiles: [], totalCollections: 0, membershipCreatedAt };
+          return { ...formattedUser, avatar, nftProfiles: [], totalCollections: 0, membershipCreatedAt: "" };
         }
       })
     );
@@ -90,7 +90,7 @@ async function list_top_traders(req, res) {
 
     // Step 1: Query the swaps table to count completed swaps by init_address and accept_address
     const initCounts = await db.swaps.findAll({
-      where: { status: SwapStatus.COMPLETED },
+      where: { status: SwapStatus.COMPLETED, accept_address: { [Sequelize.Op.ne]: null } },
       attributes: [
         "init_address",
         [Sequelize.fn("COUNT", Sequelize.col("init_address")), "swapCount"]
@@ -99,7 +99,7 @@ async function list_top_traders(req, res) {
     });
 
     const acceptCounts = await db.swaps.findAll({
-      where: { status: SwapStatus.COMPLETED },
+      where: { status: SwapStatus.COMPLETED, accept_address: { [Sequelize.Op.ne]: null } },
       attributes: [
         "accept_address",
         [Sequelize.fn("COUNT", Sequelize.col("accept_address")), "swapCount"]
@@ -173,8 +173,6 @@ async function list_top_traders(req, res) {
             subname: foundSubnames.length > 0 ? foundSubnames[0].name : "",
           };
         }
-
-
       })
     );
 
