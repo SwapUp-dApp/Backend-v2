@@ -4,9 +4,11 @@ import { handleError } from "../../errors";
 import logger from "../../logger";
 import { getNFTCollectionsByWalletId } from "../utils/nft";
 import { Op, Sequelize } from "sequelize";
-import { getSubnameListedOnL2Api } from "../../service/thirdparty.service";
+import { getBaseBlockscoutTokenByAddressApi, getCoinRankingCurrenciesApi, getSubnameListedOnL2Api } from "../../service/thirdparty.service";
 import { getFormattedUserDetails } from "../utils/user";
 import { SwapStatus } from "../utils/constants";
+import { tryParseJSON } from "../utils/helpers";
+import { convertBlockscoutToCoinRankingFormat } from "../utils/currencies";
 
 
 async function list_new_members(req, res) {
@@ -187,7 +189,237 @@ async function list_top_traders(req, res) {
   }
 }
 
+async function list_trending_token_pairs(req, res) {
+  try {
+    // Step 1: Fetch all completed swaps with necessary columns
+    const completedSwaps = await db.swaps.findAll({
+      where: {
+        status: SwapStatus.COMPLETED,
+        accept_address: { [Op.ne]: null },
+      },
+      attributes: ["metadata"],
+    });
+
+    // Step 2: Parse metadata and filter for ERC20 tokens
+    const tokenPairs = [];
+
+    completedSwaps.forEach((swap) => {
+      const metadata = tryParseJSON(swap.metadata);
+      if (metadata && metadata.init && metadata.accept) {
+        const initTokens = metadata.init.tokens.filter(
+          (token) => token.type === "ERC20"
+        );
+        const acceptTokens = metadata.accept.tokens.filter(
+          (token) => token.type === "ERC20"
+        );
+
+        // Generate pairs of (init_token, accept_token)
+        initTokens.forEach((initToken) => {
+          acceptTokens.forEach((acceptToken) => {
+            tokenPairs.push({
+              pair: {
+                init: {
+                  address: initToken.address,
+                  type: initToken.type,
+                  image_url: initToken.image_url,
+                  symbol: initToken.value?.symbol || "N/A",
+                },
+                accept: {
+                  address: acceptToken.address,
+                  type: acceptToken.type,
+                  image_url: acceptToken.image_url,
+                  symbol: acceptToken.value?.symbol || "N/A",
+                },
+              },
+            });
+          });
+        });
+      }
+    });
+
+    // Step 3: Count occurrences of each token pair
+    const pairCounts = {};
+
+    tokenPairs.forEach(({ pair }) => {
+      const pairKey = `${pair.init.address}:${pair.init.type}|${pair.accept.address}:${pair.accept.type}`;
+      if (pairCounts[pairKey]) {
+        pairCounts[pairKey].count++;
+      } else {
+        pairCounts[pairKey] = {
+          count: 1,
+          pair, // Store the pair details for later use
+        };
+      }
+    });
+
+    // Step 4: Sort token pairs by count and get the top 10
+    const topTokenPairs = Object.values(pairCounts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+      .map(({ count, pair }) => ({
+        init: pair.init,
+        accept: pair.accept,
+        count,
+      }));
+
+    // Step 5: Send response
+    return res.status(200).json({
+      success: true,
+      message: "Top 10 trending token pairs fetched successfully.",
+      data: topTokenPairs,
+    });
+  } catch (err) {
+    handleError(res, err, "list_trending_token_pairs: error");
+  }
+}
+
+async function list_trending_tokens(req, res) {
+  try {
+    // Step 1: Fetch all completed swaps with necessary columns
+    const completedSwaps = await db.swaps.findAll({
+      where: {
+        status: SwapStatus.COMPLETED,
+        accept_address: { [Op.ne]: null },
+      },
+      attributes: ["metadata", "trading_chain"],
+    });
+
+    // Step 2: Parse metadata and filter for ERC20 tokens
+    const tokens = [];
+
+    completedSwaps.forEach((swap) => {
+      const metadata = tryParseJSON(swap.metadata);
+      if (metadata && metadata.init && metadata.accept) {
+        const initTokens = metadata.init.tokens.filter(
+          (token) => token.type === "ERC20"
+        );
+        const acceptTokens = metadata.accept.tokens.filter(
+          (token) => token.type === "ERC20"
+        );
+
+        // Collect tokens from both init and accept sides
+        tokens.push(
+          ...initTokens.map((token) => ({
+            address: token.address,
+            type: token.type,
+            image_url: token.image_url,
+            symbol: token.value?.symbol || "N/A",
+            trading_chain: Number(swap.trading_chain),
+          })),
+          ...acceptTokens.map((token) => ({
+            address: token.address,
+            type: token.type,
+            image_url: token.image_url,
+            symbol: token.value?.symbol || "N/A",
+            trading_chain: Number(swap.trading_chain),
+          }))
+        );
+      }
+    });
+
+    // Step 3: Count occurrences of each token
+    const tokenCounts = {};
+
+    tokens.forEach((token) => {
+      const tokenKey = `${token.address}:${token.type}`;
+      if (tokenCounts[tokenKey]) {
+        tokenCounts[tokenKey].count++;
+      } else {
+        tokenCounts[tokenKey] = {
+          count: 1,
+          token, // Store token details for later use
+        };
+      }
+    });
+
+    // Step 4: Sort tokens by count and get the top 10
+    const topTokens = Object.values(tokenCounts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+      .map(({ count, token }) => ({
+        ...token,
+        tokenAppearance: count,
+      }));
+
+    // Step 5: Fetch additional information for each token
+    const ethAddresses = [];
+    const baseAddresses = [];
+    const additionalInfo = [];
+
+    topTokens.forEach((token) => {
+      if (token.trading_chain === 8453) {
+        baseAddresses.push(token.address);
+      } else {
+        ethAddresses.push(token.address);
+      }
+    });
+
+    // Fetch Ethereum token details
+    if (ethAddresses.length > 0) {
+      const ethCurrenciesRes = await getCoinRankingCurrenciesApi({
+        blockchains: ["ethereum"],
+        contractAddresses: ethAddresses
+      });
+      additionalInfo.push(...ethCurrenciesRes.data.data.coins);
+    }
+
+    // Fetch Base token details
+    if (baseAddresses.length > 0) {
+      const baseCurrenciesRes = await getCoinRankingCurrenciesApi({
+        blockchains: ["base"],
+        contractAddresses: baseAddresses,
+      });
+
+      const baseTokensFromCoinRanking = baseCurrenciesRes.data.data.coins || [];
+      const missingBaseAddresses = baseAddresses.filter(
+        (address) =>
+          !baseTokensFromCoinRanking.some((coin) =>
+            coin.contractAddresses.some((contract) =>
+              contract.includes(address.toLowerCase())
+            )
+          )
+      );
+
+      // Fetch missing tokens from BaseBlockscout API
+      const additionalBaseTokens = await Promise.all(
+        missingBaseAddresses.map(async (address) => {
+          const tokenData = await getBaseBlockscoutTokenByAddressApi(address);
+          return convertBlockscoutToCoinRankingFormat(tokenData.data.symbol, tokenData.data);
+        })
+      );
+
+      additionalInfo.push(...baseTokensFromCoinRanking, ...additionalBaseTokens);
+    }
+
+
+    // Step 6: Merge additional data
+    const finalTokens = topTokens.map((token) => {
+      const additionalData = additionalInfo.find((info) =>
+        info.contractAddresses.some((contractAddress) =>
+          contractAddress.includes(token.address.toLowerCase())
+        )
+      );
+
+      return {
+        ...token,
+        additionalData: additionalData || null,
+      };
+    });
+
+    // Step 7: Send response
+    return res.status(200).json({
+      success: true,
+      message: "Top 10 trending tokens with additional info fetched successfully.",
+      data: finalTokens,
+    });
+  } catch (err) {
+    handleError(res, err, "list_trending_tokens: error");
+  }
+}
+
 export const analyticsController = {
   list_new_members,
-  list_top_traders
+  list_top_traders,
+  list_trending_token_pairs,
+  list_trending_tokens
 };
