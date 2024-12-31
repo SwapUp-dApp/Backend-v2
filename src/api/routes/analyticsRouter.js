@@ -6,4 +6,6 @@ export const analyticsRouter = express.Router();
 
 analyticsRouter
   .get('/new-members', analyticsController.list_new_members)
-  .get('/top-traders', analyticsController.list_top_traders);
+  .get('/top-traders', analyticsController.list_top_traders)
+  .get('/trending-token-pairs', analyticsController.list_trending_token_pairs)
+  .get('/trending-tokens', analyticsController.list_trending_tokens);
