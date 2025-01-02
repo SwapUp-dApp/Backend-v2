@@ -7,7 +7,7 @@ import { createOrGetSmartAccount, getSubscriptionTokenBalance } from "../utils/h
 import { CustomError, handleError } from "../../errors";
 import { privateKeyToAccount, smartWallet } from "thirdweb/wallets";
 import { currentChain, thirdWebClient } from "../../utils/thirdwebHelpers";
-import { availableNetworks, getAvailableTokensList, getTokenSymbolsForWalletBreakdown } from "../../constants/params";
+import { availableNetworks, getAvailableTokensList } from "../../constants/params";
 import { getDecryptedPrivateKey, getEncryptedPrivateKey } from "../utils/encryption";
 
 
@@ -18,27 +18,21 @@ async function token_breakdown_against_wallet(req, res) {
 
         const availableTokens = getAvailableTokensList(currentChain.id || Environment.NETWORK_ID);
 
-        // Step 1: Filter ERC20 tokens
-        const erc20TokensToFilter = getTokenSymbolsForWalletBreakdown(currentChain.id || Environment.NETWORK_ID);
-        const filteredErc20Tokens = availableTokens.filter(token => erc20TokensToFilter.includes(token.id));
+        // Step 1: Collect balances for ERC20 tokens owned by wallet id
+        const erc20TokenBalances = await alchemyInstance.core.getTokenBalances(walletId);
 
-        // Step 2: Collect balances for ERC20 tokens
-        const erc20TokenBalances = await alchemyInstance.core.getTokenBalances(walletId, filteredErc20Tokens.map(t => t.address));
-
-        // Step 3: Collect balances for Ethereum and other networks
+        // Step 2: Collect balances for Ethereum, Base and other networks
         const networks = availableNetworks;
-
-        const networkBalances = await Promise.all(networks.map(async ({ network, key, name }) => {
+        const formattedNetworkBalances = await Promise.all(networks.map(async ({ network, key, name }) => {
             const balance = await getAlchemy(network).core.getBalance(walletId, 'latest');
-
             const ethTokenObject = availableTokens.find(token => token.id === key);
-
             const responseObject = {
                 key,
                 network: {
                     iconUrl: ethTokenObject.iconUrl,
                     name: name,
-                    symbol: ethTokenObject.symbol
+                    symbol: ethTokenObject.symbol,
+                    contract: ''
                 },
                 percentage: 0,
                 balance: Number(Utils.formatEther(balance))
@@ -47,22 +41,51 @@ async function token_breakdown_against_wallet(req, res) {
             return responseObject;
         }));
 
-        // Step 4: Format and combine token balances
-        const responseTokenBreakdownList = [...networkBalances];
-
+        // Step 3: Get ERC20 token metadata owned by the wallet and format it
+        let formattedErc20TokenBalances;
         if (erc20TokenBalances && erc20TokenBalances.tokenBalances.length > 0) {
-            erc20TokenBalances.tokenBalances.forEach(tokenBalanceRes => {
-                const matchedErc20Token = filteredErc20Tokens.find(token => token.address === tokenBalanceRes.contractAddress);
-                if (matchedErc20Token) {
-                    const resObject = {
-                        key: matchedErc20Token.id,
-                        network: { iconUrl: matchedErc20Token.iconUrl, name: matchedErc20Token.name, symbol: matchedErc20Token.symbol },
-                        balance: Number(Utils.formatEther(tokenBalanceRes.tokenBalance))
+            formattedErc20TokenBalances = await Promise.all(erc20TokenBalances.tokenBalances.map(async (token) => {
+                let resObject = {
+                    key: '',
+                    network: { iconUrl: '', name: '', symbol: '', contract: String(token.contractAddress) },
+                    balance: Number(Utils.formatEther(token.tokenBalance)),
+                    percentage: 0
+                };
+
+                try {
+                    const metadata = await alchemyInstance.core.getTokenMetadata(token.contractAddress);
+
+                    if (metadata) {
+                        resObject = {
+                            ...resObject,
+                            key: metadata.symbol,
+                            network: {
+                                iconUrl: metadata.logo ? metadata.logo : '',
+                                name: metadata.name,
+                                symbol: metadata.symbol,
+                                contract: token.contractAddress
+                            }
+                        };
+                    }
+
+                } catch (error) {
+                    logger.error("Error fetching token metadata: ", error);
+                    resObject = {
+                        ...resObject,
+                        key: token.contractAddress,
+                        network: {
+                            ...resObject.network,
+                            contract: token.contractAddress
+                        }
                     };
-                    responseTokenBreakdownList.push(resObject);
                 }
-            });
+
+                return resObject;
+            }));
         }
+
+        // Step 4: Combine the network balances and ERC20 token balances
+        const responseTokenBreakdownList = [...formattedNetworkBalances, ...formattedErc20TokenBalances];
 
         res.send(responseTokenBreakdownList);
     } catch (err) {
