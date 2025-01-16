@@ -12,4 +12,3 @@ dist
 .vscode/
 */vscode/*
 .env
-package-lock.json
