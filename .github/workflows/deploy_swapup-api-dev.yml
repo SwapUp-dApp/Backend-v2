@@ -48,9 +48,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: node-app
-
-      - name: Wait for 5 seconds
-        run: sleep 5
       
       - name: Login to Azure
         uses: azure/login@v2
@@ -58,6 +55,9 @@ jobs:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_F0FDFA600A834416AFE7A433C62E87DF }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_1F27C71DFFA8482EA586FDC895AED015 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_3BA5770DFDE949ABAAE12A8E4D9218D5 }}
+
+      - name: Wait for 5 seconds
+        run: sleep 5          
 
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
