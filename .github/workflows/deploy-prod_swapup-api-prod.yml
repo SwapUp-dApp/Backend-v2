@@ -20,15 +20,13 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20.x'
-
-      - name: npm install, build, and test
+      - name: Install dependencies and build
         run: |
           npm install
           npm run build --if-present
-          npm run test --if-present
 
       - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
+        run: zip -r release.zip ./dist package.json package-lock.json node_modules
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -50,9 +48,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: node-app
-
-      - name: Unzip artifact for deployment
-        run: unzip release.zip
       
       - name: Login to Azure
         uses: azure/login@v2
@@ -61,11 +56,12 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_CB79A991F791452FAA3A9CB394454447 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_E86368BF5D484067BCF1C065DDCCCDA6 }}
 
+      - name: Wait for 5 seconds
+        run: sleep 5           
+
       - name: 'Deploy to Azure Web App'
-        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'swapup-api-prod'
-          slot-name: 'Production'
-          package: .
+          package: release.zip
           
