@@ -43,11 +43,21 @@ Before deployment, make sure you have the following:
 
    git pull origin main
 
-3. **🔧 Set Environment Variables**  
+3. **📥 Pull Latest Changes from `deploy`**  
+   * Pull latest code from the `deploy` branch:
+      ```bash     
+        git pull 
+      ``` 
+      Or
+      ```bash     
+        git pull origin deploy
+      ``` 
+
+4. **🔧 Set Environment Variables**  
    * Update the `.env` file:  
      1. Set `SWAPUP_ENVIRONMENT_KEY` to `"development"`.  
      2. ✅ Verify that all environment variables prefixed with `DEVELOPMENT_` are correctly configured.  
-4. **💻 Testing Locally (Optional but Recommended)**  
+5. **💻 Testing Locally (Optional but Recommended)**  
    * Before pushing changes to the deployment branch, you can test the backend locally using `npm start`. This ensures that the code is working as expected before deployment.  
      1. **Install Dependencies**:
         ```bash     
@@ -61,14 +71,14 @@ Before deployment, make sure you have the following:
 
      4. **Verify Local Changes**:   
         Make sure everything is functioning properly before pushing to the deployment branch.  
-5. **📤 Push Changes to the `deploy` Branch**
+6. **📤 Push Changes to the `deploy` Branch**
 
 If everything looks fine, push the code to the `deploy` branch:
 
 ```bash
-git push origin deploy  
-git add .  
-git commit \-m "Deploy: \<your message\>
+  git push origin deploy  
+  git add .  
+  git commit -m "Deploy: <your message>
 ```
 
   * This will trigger the deployment pipeline for the **development environment**.
@@ -100,32 +110,41 @@ git commit \-m "Deploy: \<your message\>
       ```bash     
       git pull origin main
       ```
+3. **📥 Pull Latest Changes from `deploy`**  
+   * Pull latest code from the `deploy` branch:
+      ```bash     
+        git pull 
+      ``` 
+      Or
+      ```bash     
+        git pull origin deploy
+      ``` 
 
-3. **🔧 Set Environment Variables**  
+4. **🔧 Set Environment Variables**  
    * Update the `.env` file:  
      * Set `SWAPUP_ENVIRONMENT_KEY` to `"production"`.  
      * ✅ Verify that all environment variables prefixed with `PRODUCTION_` are correctly configured.  
-4. **💻 Testing Locally (Optional but Recommended)**  
+5. **💻 Testing Locally (Optional but Recommended)**  
    * Before pushing changes to the deployment branch, you can test the backend locally using `npm start`. This ensures that the code is working as expected before deployment.  
      * **Install Dependencies**:
         ```bash     
         npm install
         ```
-
+        Or
      * **Start the Backend Locally**:  
         ```bash     
         npm start 
         ```
      * **Verify Local Changes**:   
        Make sure everything is functioning properly before pushing to the deployment branch.  
-5. **📤 Push Changes to the `deploy-prod` Branch**
+6. **📤 Push Changes to the `deploy-prod` Branch**
 
 If everything looks fine, push the code to the **`deploy-prod`** branch: 
 
   ```bash     
-  git add .  
-  git commit -m "Deploy-Prod: <your message>"
-  git push origin deploy
+    git add .  
+    git commit -m "Deploy-Prod: <your message>"
+    git push origin deploy
   ```  
   * This will trigger the deployment pipeline for the **production environment**.
 
@@ -169,7 +188,7 @@ The **Build Job** is responsible for preparing the backend API, including instal
 **Checkout the Code 💻**  
 The code is checked out from the repository.  
   ```bash     
- - uses: actions/checkout@v4
+   - uses: actions/checkout@v4
   ```  
 
 1. **Set up Node.js ⚙️**  
@@ -183,16 +202,16 @@ The code is checked out from the repository.
 3. **Install Dependencies and Build 🔧**  
    Installs all dependencies defined in `package.json`, then builds the app if a build script is available (`npm run build`).
      ```bash     
-     - name: Install dependencies and build  
-       run: |  
-         npm install  
-         npm run build \--if-present  
+      - name: Install dependencies and build  
+        run: |  
+          npm install  
+          npm run build --if-present  
       ```    
 5. **Zip the Build Artifact 📦**  
    Creates a zip file (`release.zip`) containing the build output (`./dist`), along with essential files like `package.json`, `package-lock.json`, and `node_modules`. This zip file will be used in the deployment job.
      ```bash     
       - name: Zip artifact for deployment    
-        run: zip \-r release.zip ./dist package.json package-lock.json node\_modules
+        run: zip -r release.zip ./dist package.json package-lock.json node_modules
       ```     
 6. **Upload Artifact for Deployment 📤**  
    Uploads the zipped artifact so that the next deployment job can use it.
@@ -213,35 +232,35 @@ The **Deploy Job** is responsible for deploying the pre-built backend API to Azu
 **Download Artifact from Build Job 📥**  
   Downloads the artifact (`node-app`) from the build job to be used in the deployment.  
   ```bash
-  - name: Download artifact from build job  
-    uses: actions/download-artifact@v4  
-    with:  
-      name: node-app
+   - name: Download artifact from build job  
+     uses: actions/download-artifact@v4  
+     with:  
+       name: node-app
   ```
 1. **Login to Azure 🔐**  
    Logs into Azure using service principal credentials stored in GitHub Secrets.
     ```bash
-    - name: Login to Azure  
-      uses: azure/login@v2  
-      with:  
-         client-id: ${{ secrets.AZUREAPPSERVICE\_CLIENTID\_F0FDFA600A834416AFE7A433C62E87DF }}  
-         tenant-id: ${{ secrets.AZUREAPPSERVICE\_TENANTID\_1F27C71DFFA8482EA586FDC895AED015 }}  
-         subscription-id: ${{ secrets.AZUREAPPSERVICE\_SUBSCRIPTIONID\_3BA5770DFDE949ABAAE12A8E4D9218D5 }}  
+     - name: Login to Azure  
+       uses: azure/login@v2  
+       with:  
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_F0FDFA600A834416AFE7A433C62E87DF }}  
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_1F27C71DFFA8482EA586FDC895AED015 }}  
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_3BA5770DFDE949ABAAE12A8E4D9218D5 }}  
     ```  
 2. **Wait for 5 Seconds ⏳**  
    Adds a small delay to ensure that resources are ready for deployment.
     ```bash
-    - name: Wait for 5 seconds  
-      run: sleep 5   
+     - name: Wait for 5 seconds  
+       run: sleep 5   
     ```   
 4. **Deploy to Azure Web App 🌐**  
    Deploys the zip file (`release.zip`) to the Azure Web App `swapup-api-dev`.
     ```bash
-    - name: 'Deploy to Azure Web App'  
-      uses: azure/webapps-deploy@v3  
-      with:  
-       app-name: 'swapup-api-dev'  
-       package: release.zip 
+     - name: 'Deploy to Azure Web App'  
+       uses: azure/webapps-deploy@v3  
+       with:  
+        app-name: 'swapup-api-dev'  
+        package: release.zip 
     ```
 
 ## **🛠️ .deployment File Configuration**
