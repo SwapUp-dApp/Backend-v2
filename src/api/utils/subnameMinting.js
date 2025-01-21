@@ -56,7 +56,12 @@ export const handleGetMintSubnameTransactionParams = async (subnameLabel, minter
     minterAddress: treasuryAddress,
     subnameLabel: subnameLabel,
     subnameOwner: minterAddress,
-    token: foundToken.refreshToken
+    token: foundToken.refreshToken,
+    records: {
+      texts: [{ key: "name", value: "SwapUp User" }, { key: "description", value: "This subdomain  is created through SwapUp platform." },],
+      addresses: [{ coinType: 60, address: minterAddress }],
+      contenthash: "0x0"
+    }
   });
 
   if (transactionParams) { console.log("Generated transaction params: ", transactionParams); }
