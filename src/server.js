@@ -19,20 +19,45 @@ app.use(bodyParser.urlencoded({ extended: true, limit: apiPayloadLimit }));
 app.use(bodyParser.text({ limit: apiPayloadLimit }));
 app.use(bodyParser.json({ type: 'application/json', limit: apiPayloadLimit }));
 
+// Get allowed origins from environment variable
+const allowedOrigins = Environment.ACCESS_CONTROL_ALLOWED_ORIGINS ? Environment.ACCESS_CONTROL_ALLOWED_ORIGINS.split(',') : [];
+
 /**
  * Adding headers to our requests.
  */
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
-  if (req.method === "OPTIONS") {
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH");
-    return res.status(200).json({});
+  try {
+    const origin = req.headers.origin;
+
+    // Allow all origins if ALLOWED_ORIGINS is set to '*'
+    if (allowedOrigins.includes('*')) {
+      res.header("Access-Control-Allow-Origin", '*');
+    }
+    // Check if the request origin is in the allowed origins list
+    else if (allowedOrigins.includes(origin)) {
+      res.header("Access-Control-Allow-Origin", origin);
+    }
+    // Deny access if the origin is not allowed
+    else {
+      logger.warn(`Blocked request from unauthorized origin: ${origin}`);
+      throw new CustomError(403, "Origin not allowed");
+    }
+
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    );
+
+    if (req.method === "OPTIONS") {
+      res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH");
+      return res.status(200).json({});
+    }
+
+    next();
+
+  } catch (error) {
+    handleError(res, error, "***CORS_ACCESS error");
   }
-  next();
 });
 
 /* apply rate limit */
