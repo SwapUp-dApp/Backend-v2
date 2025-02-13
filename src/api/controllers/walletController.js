@@ -22,7 +22,11 @@ async function token_breakdown_against_wallet(req, res) {
         const erc20TokenBalances = await alchemyInstance.core.getTokenBalances(walletId);
 
         // Step 2: Collect balances for Ethereum, Base and other networks
-        const networks = availableNetworks;
+        let networks = availableNetworks.filter(network => network.id === currentChain.id);
+        if (networks.length === 0) {
+            networks = availableNetworks[0];
+        }
+
         const formattedNetworkBalances = await Promise.all(networks.map(async ({ network, key, name }) => {
             const balance = await getAlchemy(network).core.getBalance(walletId, 'latest');
             const ethTokenObject = availableTokens.find(token => token.id === key);
