@@ -2,18 +2,25 @@ import { privateKeyToAccount, smartWallet } from "thirdweb/wallets";
 import Environment from "../../config";
 import { currentChain, thirdWebClient } from "../../utils/thirdwebHelpers";
 import { CustomError } from "../../errors";
+import { getTreasurySmartAccountPrivateKeyFromAzureVault } from "./azureVault";
 
 export const getTreasurySmartAccount = async () => {
-  const { SWAPUP_TREASURY_API_KEY, SWAPUP_TREASURY_SMART_ACCOUNT } = Environment;
+  const { SWAPUP_TREASURY_PRIVATE_KEY } = Environment;
 
-  if (!SWAPUP_TREASURY_SMART_ACCOUNT || !SWAPUP_TREASURY_API_KEY) {
-    throw new CustomError(404, "SwapUp treasury smart account credentials not found.");
+  let swapupTreasuryPrivateKey = SWAPUP_TREASURY_PRIVATE_KEY;
+
+  if (Environment.ENVIRONMENT_KEY === 'production') {
+    swapupTreasuryPrivateKey = await getTreasurySmartAccountPrivateKeyFromAzureVault();
+  }
+
+  if (!swapupTreasuryPrivateKey) {
+    throw new CustomError(404, "SwapUp smart treasury account private key not found.");
   }
 
   // Create a wallet from the private key
   const personalAccount = privateKeyToAccount({
     client: thirdWebClient,
-    privateKey: SWAPUP_TREASURY_API_KEY,
+    privateKey: swapupTreasuryPrivateKey,
   });
 
   // Reconnect to the smart wallet (for the treasury smart account)

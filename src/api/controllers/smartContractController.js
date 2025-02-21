@@ -4,9 +4,7 @@ import logger from "../../logger";
 import { sendTransaction, getContract, ZERO_ADDRESS, prepareContractCall, toWei, readContract } from "thirdweb";
 import { currentChain, thirdWebClient } from "../../utils/thirdwebHelpers";
 import { SUE_SWAP_CANCEL_ACTION, SUE_SWAP_COMPLETE_ACTION_STRING, SwapMode, SwapModeString } from "../utils/constants";
-import db from "../../database/models";
 import { createOrGetSmartAccount, deductSubscriptionTokenCharges, getSubscriptionTokenBalance } from "../utils/helpers";
-import { transfer } from "thirdweb/extensions/erc20";
 
 
 async function create_swap(req, res) {
@@ -17,7 +15,11 @@ async function create_swap(req, res) {
     const { smartAccount, newSmartWallet } = await createOrGetSmartAccount(walletId);
     const subscriptionToken = await getSubscriptionTokenBalance(smartAccount.address);
 
-    if (subscriptionToken.balance < subscriptionToken.tradeCharges) {
+    // Get the unique asset types from the initiator assets
+    const uniqueAssetTypes = getUniqueAssetTypesCount(initiatorAssets);
+
+    // Check if the user has enough subscription tokens for the number of unique asset types
+    if (subscriptionToken.balance < (subscriptionToken.tradeCharges * uniqueAssetTypes)) {
       throw new CustomError(400, "Insufficient Subscription Token Balance");
     }
 
@@ -28,12 +30,6 @@ async function create_swap(req, res) {
     });
 
     const { formattedInitAssets, formattedAcceptAssets } = await getFormattedAssetsBySwap(initiatorAssets, responderAssets);
-
-    // logger.info("UnFormatted init assets: ", initiatorAssets);
-    // logger.info("UnFormatted accept assets: ", responderAssets);
-
-    // console.log("Formatted init assets: ", formattedInitAssets);
-    // console.log("Formatted accept assets: ", formattedAcceptAssets);
 
     const preparedTransaction = prepareContractCall({
       contract: swapupContract,
@@ -81,7 +77,12 @@ async function counter_swap(req, res) {
     const { smartAccount, newSmartWallet } = await createOrGetSmartAccount(walletId);
 
     const subscriptionToken = await getSubscriptionTokenBalance(smartAccount.address);
-    if (subscriptionToken.balance < subscriptionToken.tradeCharges) {
+
+    // Get the unique asset types from the initiator assets
+    const uniqueAssetTypes = getUniqueAssetTypesCount(initiatorAssets);
+
+    // Check if the user has enough subscription tokens for the number of unique asset types
+    if (subscriptionToken.balance < (subscriptionToken.tradeCharges * uniqueAssetTypes)) {
       throw new CustomError(400, "Insufficient Subscription Token Balance");
     }
 
@@ -140,7 +141,12 @@ async function propose_swap(req, res) {
     const { smartAccount, newSmartWallet } = await createOrGetSmartAccount(walletId);
 
     const subscriptionToken = await getSubscriptionTokenBalance(smartAccount.address);
-    if (subscriptionToken.balance < subscriptionToken.tradeCharges) {
+
+    // Get the unique asset types from the initiator assets
+    const uniqueAssetTypes = getUniqueAssetTypesCount(initiatorAssets);
+
+    // Check if the user has enough subscription tokens for the number of unique asset types
+    if (subscriptionToken.balance < (subscriptionToken.tradeCharges * uniqueAssetTypes)) {
       throw new CustomError(400, "Insufficient Subscription Token Balance");
     }
 
@@ -199,7 +205,12 @@ async function complete_swap(req, res) {
     const { smartAccount, newSmartWallet } = await createOrGetSmartAccount(walletId);
 
     const subscriptionToken = await getSubscriptionTokenBalance(smartAccount.address);
-    if (subscriptionToken.balance < subscriptionToken.tradeCharges) {
+
+    // Get the unique asset types from the initiator assets
+    const uniqueAssetTypes = getUniqueAssetTypesCount(responderAssets);
+
+    // Check if the user has enough subscription tokens for the number of unique asset types
+    if (subscriptionToken.balance < (subscriptionToken.tradeCharges * uniqueAssetTypes)) {
       throw new CustomError(400, "Insufficient Subscription Token Balance");
     }
 
@@ -259,7 +270,12 @@ async function cancel_swap(req, res) {
     const { smartAccount, newSmartWallet } = await createOrGetSmartAccount(walletId);
 
     const subscriptionToken = await getSubscriptionTokenBalance(smartAccount.address);
-    if (subscriptionToken.balance < subscriptionToken.tradeCharges) {
+
+    // Get the unique asset types from the initiator assets
+    const uniqueAssetTypes = getUniqueAssetTypesCount(initiatorAssets);
+
+    // Check if the user has enough subscription tokens for the number of unique asset types
+    if (subscriptionToken.balance < (subscriptionToken.tradeCharges * uniqueAssetTypes)) {
       throw new CustomError(400, "Insufficient Subscription Token Balance");
     }
 
@@ -403,6 +419,20 @@ const getFormattedAssetsBySwap = async (initiatorAssets, responderAssets) => {
 
 };
 
+const getUniqueAssetTypesCount = (assets) => {
+  // Use a Set to store unique asset types
+  const uniqueAssetTypes = new Set();
+
+  // Iterate over the assets and add each assetType to the Set
+  assets.forEach((asset) => {
+    if (asset && asset.assetType) {
+      uniqueAssetTypes.add(asset.assetType);
+    }
+  });
+
+  // Return the size of the Set (number of unique asset types)
+  return uniqueAssetTypes.size;
+};
 
 export const smartContractController = {
   create_swap,

@@ -127,7 +127,23 @@ async function smart_treasury_wallet_balance_check(req, res) {
   }
 }
 
+async function test_treasury_smart_account(req, res) {
+  try {
+    const { smartAccount, createdSmartWallet } = await getTreasurySmartAccount();
+
+    return res.status(201).json({
+      success: true,
+      message: `Successfully able to connect treasury smart account.`,
+      data: { smartAccount: smartAccount.address }
+    });
+
+  } catch (err) {
+    handleError(res, err, "test_treasury_smart_account: error");
+  }
+}
+
 export const treasuryController = {
   transfer_erc20_tokens,
-  smart_treasury_wallet_balance_check
+  smart_treasury_wallet_balance_check,
+  test_treasury_smart_account
 };
