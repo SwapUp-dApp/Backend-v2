@@ -15,7 +15,9 @@ async function list_all_wallet_nfts(req, res) {
 
         // Iterate over the NFTs and add them to the nfts array.
         for await (const nft of nftsIterable) {
-            nfts.push(nft);
+            if (!(nft.title.endsWith(".eth") || (nft.contract.name.endsWith(".eth")))) {
+                nfts.push(nft);
+            }
         }
         //let nfts = await alchemy.nft.getNftsForOwner(req.params.walletId)
         logger.info(nfts);
