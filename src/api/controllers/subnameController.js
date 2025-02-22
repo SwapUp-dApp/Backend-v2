@@ -9,8 +9,8 @@ async function mint_subname(req, res) {
     const minterAddress = req.params.minterAddress;
     const { subnameLabel, paymentMode } = req.body;
 
-    console.log("Payment Mode: ", paymentMode);
-    console.log("Subname Label: ", subnameLabel);
+    // console.log("Payment Mode: ", paymentMode);
+    // console.log("Subname Label: ", subnameLabel);
 
     if (!minterAddress || !subnameLabel || !paymentMode) {
       throw new CustomError(400, "minterAddress, subnameLabel and paymentMode are required.");
@@ -30,6 +30,7 @@ async function mint_subname(req, res) {
       data: mintRes,
     });
   } catch (err) {
+    console.log("mint_subname:", err);
     handleError(res, err, "mint_subname: error");
   }
 }

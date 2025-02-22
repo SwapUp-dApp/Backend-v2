@@ -9,6 +9,7 @@ import db from "../../database/models";
 import { CustomError } from "../../errors";
 import { SUE_PaymentMode } from "./constants";
 import { createOrGetSmartAccount, deductSubscriptionTokenCharges, getSubscriptionTokenBalance } from "./helpers";
+import { updateUserTagsIfFirstSubnameMinted } from "./userTagsUpdater";
 
 const computedChain = currentChain.testnet ? sepolia : ethereum;
 const LISTED_NAME = Environment.NAMESPACE_LISTED_ENS_NAME;
@@ -117,6 +118,25 @@ export const handleMintNewSubname = async (subnameLabel, minterAddress, paymentM
   if (paymentMode === SUE_PaymentMode.SUBSCRIPTION_TOKENS) {
     await deductSubscriptionTokenCharges(userSmartAccount.smartAccount, minterAddress, subscriptionToken.address, subscriptionToken.subnameCharges, "Subname");
     await userSmartAccount.newSmartWallet.disconnect();
+  }
+
+  // Insert the newly minted subname into the `subnames` table
+  const newSubname = await db.subnames.create({
+    subnameOwner: minterAddress,
+    subnameLabel: subnameLabel,
+    subname: `${subnameLabel}.${LISTED_NAME}`,
+    parentName: LISTED_NAME
+    // createdAt: new Date(),
+    // updatedAt: new Date()
+  });
+
+  logger.info("New subname added to the database:", newSubname);
+
+  //Updated User tags with the newly minted subname
+  try {
+    await updateUserTagsIfFirstSubnameMinted(minterAddress);
+  } catch (error) {
+    logger.error("Error updating user tags:", error);
   }
 
   // Disconnect the smart account

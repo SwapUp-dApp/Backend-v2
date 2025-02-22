@@ -11,25 +11,56 @@ import { tryParseJSON } from "../utils/helpers";
 import { convertBlockscoutToCoinRankingFormat } from "../utils/currencies";
 
 
-async function list_new_members(req, res) {
+async function list_new_subnames(req, res) {
   try {
     // Fetch the latest 5 users ordered by createdAt in descending order
-    const latestUsers = await db.users.findAll({
+    const latestSubnames = await db.subnames.findAll({
       order: [['createdAt', 'DESC']],
-      limit: 5,
-      attributes: { exclude: ['twitter_access', 'privateKey', 'points', 'tags', 'social_links', 'updatedAt', 'description'] }
+      limit: 5
     });
 
-    if (!latestUsers || latestUsers.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No users found.",
+    return res.status(200).json({
+      success: true,
+      message: "Successfully got new subnames data.",
+      data: latestSubnames
+    });
+
+  } catch (err) {
+    handleError(res, err, "list_new_subnames: error");
+  }
+}
+
+async function list_new_members(req, res) {
+  try {
+    // Fetch the latest 5 subnames ordered by createdAt in descending order
+    const latestSubnames = await db.subnames.findAll({
+      order: [['createdAt', 'DESC']],
+      limit: 5,
+    });
+
+    if (!latestSubnames || latestSubnames.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No subnames found.",
+        data: []
       });
     }
 
-    // Fetch NFTs and collections for each user
+    // Fetch users for each subnameOwner and process them
     const usersWithNFTs = await Promise.all(
-      latestUsers.map(async (user) => {
+      latestSubnames.map(async (subname) => {
+        // Fetch user details by subnameOwner
+        const user = await db.users.findOne({
+          where: { wallet: subname.subnameOwner },
+          attributes: {
+            exclude: ['twitter_access', 'privateKey', 'points', 'tags', 'social_links', 'updatedAt', 'description']
+          }
+        });
+
+        if (!user) {
+          return null; // Skip if no user is found
+        }
+
         const formattedUser = getFormattedUserDetails(user.dataValues);
         const avatar = formattedUser.images?.avatar || '';
         delete formattedUser.images;
@@ -43,49 +74,52 @@ async function list_new_members(req, res) {
           const collectionKeys = Object.keys(nftCollections);
 
           if (collectionKeys.length === 1) {
-            // Only one collection: Include all NFTs (up to 3)
             nftProfiles = nftCollections[collectionKeys[0]].slice(0, 3);
           } else if (collectionKeys.length === 2) {
-            // Two collections: Include two from one collection and one from the other
             const firstCollectionNFTs = nftCollections[collectionKeys[0]].slice(0, 2);
             const secondCollectionNFTs = nftCollections[collectionKeys[1]].slice(0, 1);
             nftProfiles = [...firstCollectionNFTs, ...secondCollectionNFTs];
           } else {
-            // Three or more collections: Include the first NFT from each collection
             nftProfiles = collectionKeys.slice(0, 3).map((key) => nftCollections[key][0]);
           }
 
-          // Fetch all matching subscription records and extract the first createdAt
-          const subscriptionRecords = await db.payments.findAll({
-            where: {
-              paidBy: formattedUser.wallet,
-              subscriptionPurchase: { [Op.ne]: null }
-            },
-            order: [["createdAt", "ASC"]],
-            attributes: ["createdAt"]
-          });
-
-          const membershipCreatedAt = subscriptionRecords.length > 0 ? subscriptionRecords[0].createdAt : '';
-
-          return { ...formattedUser, avatar, nftProfiles, totalCollections: collectionKeys.length, membershipCreatedAt };
+          return {
+            ...formattedUser,
+            avatar,
+            nftProfiles,
+            totalCollections: collectionKeys.length,
+            membershipCreatedAt: subname.createdAt,
+            subname: subname.subname
+          };
         } catch (err) {
-          // If NFT fetching fails, return the user without NFT details
           logger.error(`Error fetching NFTs for wallet ${formattedUser.wallet}:`, err.message);
-          return { ...formattedUser, avatar, nftProfiles: [], totalCollections: 0, membershipCreatedAt: "" };
+          return {
+            ...formattedUser,
+            avatar,
+            nftProfiles: [],
+            totalCollections: 0,
+            membershipCreatedAt: subname.createdAt,
+            subname: subname.subname
+          };
         }
       })
     );
 
+    // Filter out any null values (in case some users were not found)
+    const filteredUsers = usersWithNFTs.filter(user => user !== null);
+
     return res.status(200).json({
       success: true,
       message: "Successfully got new members data.",
-      data: usersWithNFTs
+      data: filteredUsers
     });
 
   } catch (err) {
     handleError(res, err, "list_new_members: error");
   }
 }
+
+
 
 async function list_top_traders(req, res) {
   try {
@@ -421,5 +455,6 @@ export const analyticsController = {
   list_new_members,
   list_top_traders,
   list_trending_token_pairs,
-  list_trending_tokens
+  list_trending_tokens,
+  list_new_subnames
 };
