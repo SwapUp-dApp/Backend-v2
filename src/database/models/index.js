@@ -45,6 +45,7 @@ db.payments = require("./payments.js")(sequelize, Sequelize);
 db.notifications = require("./notifications.js")(sequelize, Sequelize);
 db.subscriptionTokens = require("./subscriptionTokens.js")(sequelize, Sequelize);
 db.subnameAccess = require("./subnameAccess.js")(sequelize, Sequelize);
+db.subnames = require("./subnames.js")(sequelize, Sequelize);
 
 // Synchronize all models with the database, creating tables if they don't exist
 // **** ONLY TO BE USED WITHIN DEV EVNIRONMENT FOR FIRST TIME SETUP **** //

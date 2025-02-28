@@ -1,3 +1,4 @@
+const { default: db } = require("../../database/models");
 const { default: logger } = require("../../logger");
 const { SwapStatus, SUE_ProfileTags } = require("./constants");
 const { tryParseJSON } = require("./helpers");
@@ -49,7 +50,22 @@ const updateUserTagsIfFirstTrade = async (db, initAddress, acceptAddress, transa
   ]);
 };
 
+const updateUserTagsIfFirstSubnameMinted = async (walletAddress) => {
+  const user = await db.users.findOne({ where: { wallet: walletAddress } });
+  if (user) {
+    let userTags = tryParseJSON(user.tags) || [];
+
+    if (!userTags.includes(SUE_ProfileTags.COMMUNITY_MEMBER)) {
+      userTags = userTags.filter(tag => tag !== SUE_ProfileTags.NORMIE);
+      userTags.push(SUE_ProfileTags.COMMUNITY_MEMBER);
+      await user.update({ tags: JSON.stringify(userTags) });
+      logger.info("User Tags after update: ", userTags);
+    }
+  }
+};
+
 
 module.exports = {
   updateUserTagsIfFirstTrade,
+  updateUserTagsIfFirstSubnameMinted
 };
