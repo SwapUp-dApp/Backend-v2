@@ -53,6 +53,8 @@ export const handleGetMintSubnameTransactionParams = async (subnameLabel, minter
     throw new CustomError(404, `Subname access token not found for: ${Environment.SUBNAME_ACCESS_WALLET}, Chain ID: ${currentChain.id} and listed name: ${Environment.NAMESPACE_LISTED_ENS_NAME}`);
   }
 
+  logger.info(`Generating transaction params for subname: ${subnameLabel} for minter address: ${minterAddress} and treasury address: ${treasuryAddress}`);
+
   const transactionParams = await NamespaceClient.getMintTransactionParameters(listing, {
     minterAddress: treasuryAddress,
     subnameLabel: subnameLabel,
@@ -65,7 +67,7 @@ export const handleGetMintSubnameTransactionParams = async (subnameLabel, minter
     }
   });
 
-  if (transactionParams) { console.log("Generated transaction params: ", transactionParams); }
+  console.log("Subname Mint Transaction Params: ", transactionParams);
 
   return transactionParams;
 };
@@ -88,7 +90,14 @@ export const handleMintNewSubname = async (subnameLabel, minterAddress, paymentM
   const { smartAccount, createdSmartWallet } = await getTreasurySmartAccount();
   const treasuryAddress = smartAccount.address;
 
-  const transactionParams = await handleGetMintSubnameTransactionParams(subnameLabel, minterAddress, treasuryAddress);
+  let transactionParams;
+
+  try {
+    transactionParams = await handleGetMintSubnameTransactionParams(subnameLabel, minterAddress, treasuryAddress);
+  } catch (error) {
+    logger.error("Error while getting mint subname transaction params: ", error);
+    throw new error;
+  }
   // const transactionParams = await handleGetMintSubnameTransactionParams("treasury", smartAccount.address); // for minting subname for teasury
 
   const namespaceContract = getContract({
@@ -109,10 +118,17 @@ export const handleMintNewSubname = async (subnameLabel, minterAddress, paymentM
   });
 
 
-  const transactionRes = await sendTransaction({
-    transaction: preparedTransaction,
-    account: smartAccount
-  });
+  let transactionRes;
+
+  try {
+    transactionRes = await sendTransaction({
+      transaction: preparedTransaction,
+      account: smartAccount
+    });
+  } catch (error) {
+    logger.error("Error while minting subname: ", error);
+    throw new error;
+  }
 
   // Check the payment mode and if it is subscription tokens, then deduct the subscription tokens from the user's balance
   if (paymentMode === SUE_PaymentMode.SUBSCRIPTION_TOKENS) {
