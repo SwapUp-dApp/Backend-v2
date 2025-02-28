@@ -96,7 +96,7 @@ export const handleMintNewSubname = async (subnameLabel, minterAddress, paymentM
     transactionParams = await handleGetMintSubnameTransactionParams(subnameLabel, minterAddress, treasuryAddress);
   } catch (error) {
     logger.error("Error while getting mint subname transaction params: ", error);
-    throw new error;
+    throw error;
   }
   // const transactionParams = await handleGetMintSubnameTransactionParams("treasury", smartAccount.address); // for minting subname for teasury
 
@@ -127,7 +127,7 @@ export const handleMintNewSubname = async (subnameLabel, minterAddress, paymentM
     });
   } catch (error) {
     logger.error("Error while minting subname: ", error);
-    throw new error;
+    throw error;
   }
 
   // Check the payment mode and if it is subscription tokens, then deduct the subscription tokens from the user's balance
